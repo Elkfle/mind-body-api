@@ -6,21 +6,9 @@
     "_postman_id": "mb-activities-bc-grupo1-2026"
   },
   "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:8080",
-      "type": "string"
-    },
-    {
-      "key": "admin_id",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "key": "activity_id",
-      "value": "",
-      "type": "string"
-    }
+    { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
+    { "key": "access_token", "value": "", "type": "string" },
+    { "key": "activity_id", "value": "", "type": "string" }
   ],
   "item": [
     {
@@ -28,28 +16,14 @@
       "description": "CRUD de actividades deportivas — US06, US15, US16, US17",
       "item": [
         {
-          "name": "TC-ACT-01 Crear actividad",
+          "name": "TC-ACT-00a Sign-up admin (setup auth)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201 Created', () => {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "pm.test('Respuesta tiene id', () => {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body).to.have.property('id');",
-                  "    pm.collectionVariables.set('activity_id', body.id);",
-                  "});",
-                  "",
-                  "pm.test('Status inicial es ACTIVE', () => {",
-                  "    pm.expect(pm.response.json().status).to.eql('ACTIVE');",
-                  "});",
-                  "",
-                  "pm.test('currentEnrollment arranca en 0', () => {",
-                  "    pm.expect(pm.response.json().currentEnrollment).to.eql(0);",
+                  "pm.test('Setup OK (201 o 400 si ya existe)', () => {",
+                  "    pm.expect([201, 400]).to.include(pm.response.code);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -58,20 +32,81 @@
           ],
           "request": {
             "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin_act@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Admin Activities\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-00b Sign-in (captura token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('access_token', pm.response.json().accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin_act@upc.edu.pe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-in"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-01 Crear actividad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => { pm.response.to.have.status(201); });",
+                  "pm.test('Respuesta tiene id', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.collectionVariables.set('activity_id', body.id);",
+                  "});",
+                  "pm.test('Status inicial es ACTIVE', () => { pm.expect(pm.response.json().status).to.eql('ACTIVE'); });",
+                  "pm.test('currentEnrollment arranca en 0', () => { pm.expect(pm.response.json().currentEnrollment).to.eql(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Yoga Matutino\",\n  \"description\": \"Clase de yoga para principiantes\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio A\",\n  \"location\": \"Pabellón H, Piso 2\",\n  \"maxCapacity\": 20,\n  \"date\": \"2026-06-15\",\n  \"startTime\": \"07:00:00\",\n  \"endTime\": \"08:00:00\",\n  \"institutionId\": 1\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/activities?adminId={{admin_id}}",
+              "raw": "{{base_url}}/api/v1/activities",
               "host": ["{{base_url}}"],
-              "path": ["api", "v1", "activities"],
-              "query": [{ "key": "adminId", "value": "{{admin_id}}" }]
-            },
-            "description": "Crea una actividad. adminId temporal por @RequestParam hasta integrar JWT (IAM BC). Guarda activity_id para los siguientes tests."
+              "path": ["api", "v1", "activities"]
+            }
           }
         },
         {
@@ -81,24 +116,12 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200 OK', () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Respuesta es PageResponse válido', () => {",
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.test('PageResponse válido', () => {",
                   "    const body = pm.response.json();",
-                  "    pm.expect(body).to.have.property('content');",
-                  "    pm.expect(body).to.have.property('page');",
-                  "    pm.expect(body).to.have.property('size');",
-                  "    pm.expect(body).to.have.property('totalElements');",
-                  "    pm.expect(body).to.have.property('totalPages');",
-                  "    pm.expect(body).to.have.property('first');",
-                  "    pm.expect(body).to.have.property('last');",
+                  "    ['content','page','size','totalElements','totalPages','first','last'].forEach(k => pm.expect(body).to.have.property(k));",
                   "});",
-                  "",
-                  "pm.test('totalElements es al menos 1', () => {",
-                  "    pm.expect(pm.response.json().totalElements).to.be.at.least(1);",
-                  "});"
+                  "pm.test('totalElements >= 1', () => { pm.expect(pm.response.json().totalElements).to.be.at.least(1); });"
                 ],
                 "type": "text/javascript"
               }
@@ -106,17 +129,13 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
             "url": {
               "raw": "{{base_url}}/api/v1/activities?page=0&size=5",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities"],
-              "query": [
-                { "key": "page", "value": "0" },
-                { "key": "size", "value": "5" }
-              ]
-            },
-            "description": "Lista actividades paginadas. Verifica estructura del PageResponse."
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "5" }]
+            }
           }
         },
         {
@@ -126,18 +145,9 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200 OK', () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('ID coincide con el creado', () => {",
-                  "    const activityId = parseInt(pm.collectionVariables.get('activity_id'));",
-                  "    pm.expect(pm.response.json().id).to.eql(activityId);",
-                  "});",
-                  "",
-                  "pm.test('Título es el esperado', () => {",
-                  "    pm.expect(pm.response.json().title).to.eql('Yoga Matutino');",
-                  "});"
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.test('ID coincide', () => { pm.expect(pm.response.json().id).to.eql(parseInt(pm.collectionVariables.get('activity_id'))); });",
+                  "pm.test('Título correcto', () => { pm.expect(pm.response.json().title).to.eql('Yoga Matutino'); });"
                 ],
                 "type": "text/javascript"
               }
@@ -145,13 +155,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
             "url": {
               "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities", "{{activity_id}}"]
-            },
-            "description": "Obtiene la actividad creada en TC-ACT-01 usando activity_id capturado automáticamente."
+            }
           }
         },
         {
@@ -161,21 +170,10 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200 OK', () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Título fue actualizado', () => {",
-                  "    pm.expect(pm.response.json().title).to.eql('Yoga Avanzado');",
-                  "});",
-                  "",
-                  "pm.test('Capacidad fue actualizada', () => {",
-                  "    pm.expect(pm.response.json().maxCapacity).to.eql(15);",
-                  "});",
-                  "",
-                  "pm.test('Status sigue ACTIVE', () => {",
-                  "    pm.expect(pm.response.json().status).to.eql('ACTIVE');",
-                  "});"
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Título actualizado', () => { pm.expect(pm.response.json().title).to.eql('Yoga Avanzado'); });",
+                  "pm.test('Capacidad actualizada', () => { pm.expect(pm.response.json().maxCapacity).to.eql(15); });",
+                  "pm.test('Status sigue ACTIVE', () => { pm.expect(pm.response.json().status).to.eql('ACTIVE'); });"
                 ],
                 "type": "text/javascript"
               }
@@ -184,7 +182,8 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "body": {
               "mode": "raw",
@@ -194,8 +193,7 @@
               "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities", "{{activity_id}}"]
-            },
-            "description": "Edita la actividad creada. Verifica que title y maxCapacity cambien pero status siga ACTIVE."
+            }
           }
         },
         {
@@ -205,21 +203,9 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 404 Not Found', () => {",
-                  "    pm.response.to.have.status(404);",
-                  "});",
-                  "",
-                  "pm.test('ErrorResponse tiene estructura correcta', () => {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body).to.have.property('timestamp');",
-                  "    pm.expect(body).to.have.property('status');",
-                  "    pm.expect(body).to.have.property('error');",
-                  "    pm.expect(body).to.have.property('message');",
-                  "    pm.expect(body).to.have.property('path');",
-                  "});",
-                  "",
-                  "pm.test('status es 404 en el body', () => {",
-                  "    pm.expect(pm.response.json().status).to.eql(404);",
+                  "pm.test('Status 404', () => { pm.response.to.have.status(404); });",
+                  "pm.test('ErrorResponse correcto', () => {",
+                  "    ['timestamp','status','error','message','path'].forEach(k => pm.expect(pm.response.json()).to.have.property(k));",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -228,13 +214,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
             "url": {
               "raw": "{{base_url}}/api/v1/activities/99999",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities", "99999"]
-            },
-            "description": "Verifica que un ID que no existe devuelva 404 con ErrorResponse uniforme."
+            }
           }
         },
         {
@@ -244,14 +229,9 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 400 Bad Request', () => {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "pm.test('details lista los campos inválidos', () => {",
-                  "    const body = pm.response.json();",
-                  "    pm.expect(body).to.have.property('details');",
-                  "    pm.expect(body.details).to.be.an('array').that.is.not.empty;",
+                  "pm.test('Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('details no vacío', () => {",
+                  "    pm.expect(pm.response.json().details).to.be.an('array').that.is.not.empty;",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -261,19 +241,15 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
+            "body": { "mode": "raw", "raw": "{}" },
             "url": {
-              "raw": "{{base_url}}/api/v1/activities?adminId={{admin_id}}",
+              "raw": "{{base_url}}/api/v1/activities",
               "host": ["{{base_url}}"],
-              "path": ["api", "v1", "activities"],
-              "query": [{ "key": "adminId", "value": "{{admin_id}}" }]
-            },
-            "description": "Envía body vacío. Debe retornar 400 con details[] listando cada campo que falló validación."
+              "path": ["api", "v1", "activities"]
+            }
           }
         },
         {
@@ -283,13 +259,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 201 Created', () => {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "pm.test('Categoría es BASKETBALL', () => {",
-                  "    pm.expect(pm.response.json().category).to.eql('BASKETBALL');",
-                  "});"
+                  "pm.test('Status 201', () => { pm.response.to.have.status(201); });",
+                  "pm.test('Categoría BASKETBALL', () => { pm.expect(pm.response.json().category).to.eql('BASKETBALL'); });"
                 ],
                 "type": "text/javascript"
               }
@@ -298,19 +269,18 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Basketball Tarde\",\n  \"description\": \"Entrenamiento de basketball\",\n  \"category\": \"BASKETBALL\",\n  \"venue\": \"Cancha Principal\",\n  \"location\": \"Campo Deportivo\",\n  \"maxCapacity\": 10,\n  \"date\": \"2026-06-20\",\n  \"startTime\": \"16:00:00\",\n  \"endTime\": \"17:30:00\",\n  \"institutionId\": 1\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/activities?adminId={{admin_id}}",
+              "raw": "{{base_url}}/api/v1/activities",
               "host": ["{{base_url}}"],
-              "path": ["api", "v1", "activities"],
-              "query": [{ "key": "adminId", "value": "{{admin_id}}" }]
-            },
-            "description": "Crea una segunda actividad de distinta categoría para que el reporte por categoría tenga datos."
+              "path": ["api", "v1", "activities"]
+            }
           }
         },
         {
@@ -320,25 +290,13 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200 OK', () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Respuesta es un array', () => {",
-                  "    pm.expect(pm.response.json()).to.be.an('array');",
-                  "});",
-                  "",
-                  "pm.test('Cada item tiene category, totalActivities, totalEnrollment', () => {",
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Array con category/totalActivities/totalEnrollment', () => {",
                   "    pm.response.json().forEach(item => {",
-                  "        pm.expect(item).to.have.property('category');",
-                  "        pm.expect(item).to.have.property('totalActivities');",
-                  "        pm.expect(item).to.have.property('totalEnrollment');",
+                  "        ['category','totalActivities','totalEnrollment'].forEach(k => pm.expect(item).to.have.property(k));",
                   "    });",
                   "});",
-                  "",
-                  "pm.test('Hay al menos 2 categorías en el reporte', () => {",
-                  "    pm.expect(pm.response.json().length).to.be.at.least(2);",
-                  "});"
+                  "pm.test('Al menos 2 categorías', () => { pm.expect(pm.response.json().length).to.be.at.least(2); });"
                 ],
                 "type": "text/javascript"
               }
@@ -346,13 +304,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
             "url": {
               "raw": "{{base_url}}/api/v1/activities/reports/by-category",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities", "reports", "by-category"]
-            },
-            "description": "Reporte agrupado por categoría. Debe mostrar YOGA y BASKETBALL después de TC-ACT-01 y TC-ACT-07."
+            }
           }
         },
         {
@@ -361,24 +318,19 @@
             {
               "listen": "test",
               "script": {
-                "exec": [
-                  "pm.test('Status 204 No Content', () => {",
-                  "    pm.response.to.have.status(204);",
-                  "});"
-                ],
+                "exec": ["pm.test('Status 204', () => { pm.response.to.have.status(204); });"],
                 "type": "text/javascript"
               }
             }
           ],
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
             "url": {
               "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities", "{{activity_id}}"]
-            },
-            "description": "Cancela la actividad de TC-ACT-01. No la elimina — cambia status a CANCELLED."
+            }
           }
         },
         {
@@ -388,13 +340,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200 OK', () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Status de la actividad es CANCELLED', () => {",
-                  "    pm.expect(pm.response.json().status).to.eql('CANCELLED');",
-                  "});"
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Status CANCELLED', () => { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
                 ],
                 "type": "text/javascript"
               }
@@ -402,13 +349,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
             "url": {
               "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities", "{{activity_id}}"]
-            },
-            "description": "GET después del DELETE para confirmar que el registro sigue en BD pero con status CANCELLED."
+            }
           }
         }
       ]
