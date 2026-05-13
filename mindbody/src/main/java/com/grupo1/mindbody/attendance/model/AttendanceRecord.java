@@ -2,6 +2,7 @@ package com.grupo1.mindbody.attendance.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,16 +17,14 @@ public class AttendanceRecord {
     @Column(name = "reservation_id", nullable = false, unique = true)
     private Long reservationId;
 
-    @Column(name = "student_id", nullable = false)
-    private Long studentId;
-
     @Column(name = "activity_id", nullable = false)
     private Long activityId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default
-    private AttendanceStatus status = AttendanceStatus.CONFIRMED;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
+    @Column(name = "scanned_by_admin_id", nullable = false)
+    private Long scannedByAdminId;
 
     @Column(name = "scanned_at", nullable = false, updatable = false)
     private LocalDateTime scannedAt;

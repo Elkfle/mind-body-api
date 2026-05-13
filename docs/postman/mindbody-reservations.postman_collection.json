@@ -1,0 +1,357 @@
+{
+  "info": {
+    "name": "Mind&Body API — Reservations BC",
+    "description": "Colección de pruebas para el Bounded Context Reservations. Ejecutar en orden con Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "mb-reservations-bc-grupo1-2026"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
+    { "key": "access_token", "value": "", "type": "string" },
+    { "key": "activity_id", "value": "", "type": "string" },
+    { "key": "reservation_id", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Reservations",
+      "description": "CRUD de reservas — US08 al US11",
+      "item": [
+        {
+          "name": "TC-RES-00a Sign-up estudiante (setup auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Setup OK (201 o 400 si ya existe)', () => {",
+                  "    pm.expect([201, 400]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"reservas_test@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Ricardo Test\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-00b Sign-in (captura token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Token capturado', () => {",
+                  "    pm.collectionVariables.set('access_token', pm.response.json().accessToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"reservas_test@upc.edu.pe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-in"]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-00c Setup — Crear actividad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => { pm.response.to.have.status(201); });",
+                  "pm.collectionVariables.set('activity_id', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Yoga para Reservas\",\n  \"description\": \"Actividad de prueba para reservas\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio C\",\n  \"location\": \"Pabellón A\",\n  \"maxCapacity\": 3,\n  \"date\": \"2026-12-01\",\n  \"startTime\": \"09:00:00\",\n  \"endTime\": \"10:00:00\",\n  \"institutionId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-01 Crear reserva → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => { pm.response.to.have.status(201); });",
+                  "pm.test('Tiene id, qrCode y status CONFIRMED', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('qrCode');",
+                  "    pm.expect(body.status).to.eql('CONFIRMED');",
+                  "    pm.collectionVariables.set('reservation_id', body.id);",
+                  "});",
+                  "pm.test('activityId coincide', () => {",
+                  "    pm.expect(pm.response.json().activityId).to.eql(parseInt(pm.collectionVariables.get('activity_id')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activityId\": {{activity_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations"]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-02 Reserva duplicada → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('Mensaje de reserva duplicada', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('reserva activa');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activityId\": {{activity_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations"]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-03 Actividad inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => { pm.response.to.have.status(404); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"activityId\": 99999\n}" },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations"]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-04 Listar mis reservas (paginado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('PageResponse con al menos 1 elemento', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('content');",
+                  "    pm.expect(body.totalElements).to.be.at.least(1);",
+                  "});",
+                  "pm.test('La reserva creada aparece', () => {",
+                  "    const resId = parseInt(pm.collectionVariables.get('reservation_id'));",
+                  "    pm.expect(pm.response.json().content.some(r => r.id === resId)).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations?page=0&size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-05 Listar reservas por actividad (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Array con qrCode en cada elemento', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.be.an('array').with.length.at.least(1);",
+                  "    pm.expect(body[0]).to.have.property('qrCode');",
+                  "    pm.expect(body[0]).to.have.property('status');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations/activity/{{activity_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations", "activity", "{{activity_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-06 Cancelar reserva → 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 204', () => { pm.response.to.have.status(204); });"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations/{{reservation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations", "{{reservation_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-07 Verificar status CANCELLED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Reserva con status CANCELLED', () => {",
+                  "    const resId = parseInt(pm.collectionVariables.get('reservation_id'));",
+                  "    const r = pm.response.json().content.find(r => r.id === resId);",
+                  "    pm.expect(r).to.exist;",
+                  "    pm.expect(r.status).to.eql('CANCELLED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations?page=0&size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC-RES-08 Cancelar ya cancelada → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('Mensaje indica ya cancelada', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('cancelada');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations/{{reservation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations", "{{reservation_id}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
