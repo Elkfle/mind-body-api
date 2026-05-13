@@ -1,0 +1,453 @@
+{
+  "info": {
+    "name": "Mind&Body API — IAM BC",
+    "description": "Colección de pruebas para el Bounded Context IAM. Ejecutar en orden con Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "mb-iam-bc-grupo1-2026"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "IAM — Autenticación",
+      "description": "Sign-up, Sign-in, Refresh, Sign-out, Me — US relacionados con IAM",
+      "item": [
+        {
+          "name": "TC-IAM-01 Sign-up estudiante → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Respuesta tiene accessToken y refreshToken', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('accessToken');",
+                  "    pm.expect(body).to.have.property('refreshToken');",
+                  "    pm.collectionVariables.set('access_token', body.accessToken);",
+                  "    pm.collectionVariables.set('refresh_token', body.refreshToken);",
+                  "});",
+                  "",
+                  "pm.test('tokenType es Bearer', () => {",
+                  "    pm.expect(pm.response.json().tokenType).to.eql('Bearer');",
+                  "});",
+                  "",
+                  "pm.test('role es STUDENT', () => {",
+                  "    pm.expect(pm.response.json().role).to.eql('STUDENT');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"estudiante@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Juan Pérez\",\n  \"phone\": \"987654321\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            },
+            "description": "Registra un estudiante. Captura access_token y refresh_token para los tests siguientes."
+          }
+        },
+        {
+          "name": "TC-IAM-02 Sign-up admin → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('role es UNIVERSITY_ADMIN', () => {",
+                  "    pm.expect(pm.response.json().role).to.eql('UNIVERSITY_ADMIN');",
+                  "});",
+                  "",
+                  "pm.test('Guarda admin access token', () => {",
+                  "    pm.collectionVariables.set('admin_access_token', pm.response.json().accessToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@upc.edu.pe\",\n  \"password\": \"adminpass123\",\n  \"name\": \"Admin UPC\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            },
+            "description": "Registra un administrador universitario. Guarda admin_access_token para los otros BCs."
+          }
+        },
+        {
+          "name": "TC-IAM-03 Email duplicado → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Mensaje indica email duplicado', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('ya está registrado');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"estudiante@upc.edu.pe\",\n  \"password\": \"otrapass123\",\n  \"name\": \"Otro Usuario\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            },
+            "description": "Intenta registrar el mismo email. Debe retornar 400 con mensaje de email duplicado."
+          }
+        },
+        {
+          "name": "TC-IAM-04 Sign-up datos inválidos → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('details lista los campos inválidos', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('details');",
+                  "    pm.expect(body.details).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            },
+            "description": "Body vacío → 400 con details[]."
+          }
+        },
+        {
+          "name": "TC-IAM-05 Sign-in → 200 + tokens",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Tokens presentes', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('accessToken');",
+                  "    pm.expect(body).to.have.property('refreshToken');",
+                  "    pm.collectionVariables.set('access_token', body.accessToken);",
+                  "    pm.collectionVariables.set('refresh_token', body.refreshToken);",
+                  "});",
+                  "",
+                  "pm.test('email correcto en respuesta', () => {",
+                  "    pm.expect(pm.response.json().email).to.eql('estudiante@upc.edu.pe');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"estudiante@upc.edu.pe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-in"]
+            },
+            "description": "Sign-in exitoso. Actualiza access_token y refresh_token en variables de colección."
+          }
+        },
+        {
+          "name": "TC-IAM-06 Credenciales incorrectas → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"estudiante@upc.edu.pe\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-in"]
+            },
+            "description": "Contraseña incorrecta → 401."
+          }
+        },
+        {
+          "name": "TC-IAM-07 GET /me con token → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Perfil tiene estructura correcta', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('email');",
+                  "    pm.expect(body).to.have.property('name');",
+                  "    pm.expect(body).to.have.property('role');",
+                  "    pm.expect(body).to.have.property('active');",
+                  "});",
+                  "",
+                  "pm.test('email coincide', () => {",
+                  "    pm.expect(pm.response.json().email).to.eql('estudiante@upc.edu.pe');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "GET /me con Bearer token. Verifica estructura de UserProfileResponse."
+          }
+        },
+        {
+          "name": "TC-IAM-08 GET /me sin token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "GET /me sin Authorization header → 401."
+          }
+        },
+        {
+          "name": "TC-IAM-09 Refresh token → 200 + nuevos tokens",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Nuevos tokens generados', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('accessToken');",
+                  "    pm.expect(body).to.have.property('refreshToken');",
+                  "    const oldRefresh = pm.collectionVariables.get('refresh_token');",
+                  "    pm.expect(body.refreshToken).to.not.eql(oldRefresh);",
+                  "    pm.collectionVariables.set('access_token', body.accessToken);",
+                  "    pm.collectionVariables.set('refresh_token', body.refreshToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Rota el refresh token. El nuevo refresh token es diferente al anterior (rotación)."
+          }
+        },
+        {
+          "name": "TC-IAM-10 Sign-out → 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204 No Content', () => {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-out",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-out"]
+            },
+            "description": "Cierra sesión revocando el refresh token actual."
+          }
+        },
+        {
+          "name": "TC-IAM-11 Refresh token revocado → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Mensaje indica token inválido', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('inválido');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Intenta usar el refresh token ya revocado en TC-IAM-10 → 400."
+          }
+        }
+      ]
+    }
+  ]
+}
