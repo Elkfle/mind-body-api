@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 public interface IActivityService {
-    ActivityResponse create(ActivityRequest request, Long adminId);
+    ActivityResponse create(ActivityRequest request, Long createdByAdminId);
     Page<ActivityResponse> findAll(Pageable pageable);
     ActivityResponse findById(Long id);
     ActivityResponse update(Long id, ActivityRequest request);
