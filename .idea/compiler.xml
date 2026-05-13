@@ -13,7 +13,10 @@
         <module name="mindbody" />
       </profile>
     </annotationProcessing>
+<<<<<<< HEAD
     <bytecodeTargetLevel target="21" />
+=======
+>>>>>>> ee63eb121a00352af49b0f527556f8046f28cba4
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
