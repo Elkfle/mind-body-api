@@ -35,4 +35,9 @@ public record ActivityRequest(
 
     @NotNull(message = "el institutionId es obligatorio")
     Long institutionId
-) {}
+) {
+    @AssertTrue(message = "la hora de fin debe ser posterior a la hora de inicio")
+    public boolean isEndTimeAfterStartTime() {
+        return startTime == null || endTime == null || endTime.isAfter(startTime);
+    }
+}

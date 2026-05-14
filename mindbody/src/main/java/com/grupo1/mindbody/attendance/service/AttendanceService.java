@@ -6,7 +6,7 @@ import com.grupo1.mindbody.attendance.exception.AttendanceAlreadyRegisteredExcep
 import com.grupo1.mindbody.attendance.exception.InvalidQrCodeException;
 import com.grupo1.mindbody.attendance.model.AttendanceRecord;
 import com.grupo1.mindbody.attendance.repository.AttendanceRepository;
-import com.grupo1.mindbody.reservations.model.Reservation;
+import com.grupo1.mindbody.reservations.dto.ReservationQrResult;
 import com.grupo1.mindbody.reservations.model.ReservationStatus;
 import com.grupo1.mindbody.reservations.service.IReservationService;
 import com.grupo1.mindbody.shared.exception.BusinessRuleException;
@@ -26,21 +26,21 @@ public class AttendanceService implements IAttendanceService {
     @Override
     @Transactional
     public AttendanceResponse scan(String qrCode, Long adminId) {
-        Reservation reservation = reservationService.findByQrCode(qrCode)
+        ReservationQrResult reservation = reservationService.findByQrCode(qrCode)
             .orElseThrow(InvalidQrCodeException::new);
 
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+        if (reservation.status() != ReservationStatus.CONFIRMED) {
             throw new BusinessRuleException("La reserva asociada al QR no está confirmada");
         }
 
-        if (attendanceRepository.existsByReservationId(reservation.getId())) {
+        if (attendanceRepository.existsByReservationId(reservation.id())) {
             throw new AttendanceAlreadyRegisteredException();
         }
 
         AttendanceRecord record = AttendanceRecord.builder()
-            .reservationId(reservation.getId())
-            .activityId(reservation.getActivityId())
-            .userId(reservation.getUserId())
+            .reservationId(reservation.id())
+            .activityId(reservation.activityId())
+            .userId(reservation.userId())
             .scannedByAdminId(adminId)
             .build();
 

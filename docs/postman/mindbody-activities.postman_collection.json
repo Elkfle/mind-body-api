@@ -223,7 +223,7 @@
           }
         },
         {
-          "name": "TC-ACT-06 Validación — body vacío → 400",
+          "name": "TC-ACT-06 Validación — campos inválidos → 400 con details",
           "event": [
             {
               "listen": "test",
@@ -244,7 +244,10 @@
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
-            "body": { "mode": "raw", "raw": "{}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"maxCapacity\": 0,\n  \"category\": \"YOGA\",\n  \"venue\": \"\",\n  \"location\": \"\",\n  \"institutionId\": 1,\n  \"date\": \"2020-01-01\",\n  \"startTime\": \"10:00:00\",\n  \"endTime\": \"09:00:00\"\n}"
+            },
             "url": {
               "raw": "{{base_url}}/api/v1/activities",
               "host": ["{{base_url}}"],

@@ -46,7 +46,7 @@ public class AuthController {
     @Operation(summary = "Renovar access token usando refresh token")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Nuevos tokens generados"),
-        @ApiResponse(responseCode = "400", description = "Refresh token inválido o expirado")
+        @ApiResponse(responseCode = "401", description = "Refresh token inválido o expirado")
     })
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {

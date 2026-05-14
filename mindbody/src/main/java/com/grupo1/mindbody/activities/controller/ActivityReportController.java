@@ -4,6 +4,7 @@ import com.grupo1.mindbody.activities.dto.ActivitySummaryReport;
 import com.grupo1.mindbody.activities.service.IActivityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.List;
 @RequestMapping("/api/v1/activities/reports")
 @RequiredArgsConstructor
 @Tag(name = "Activity Reports", description = "Reportes analíticos de actividades")
+@SecurityRequirement(name = "bearerAuth")
 public class ActivityReportController {
 
     private final IActivityService activityService;

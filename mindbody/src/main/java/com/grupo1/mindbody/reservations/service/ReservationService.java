@@ -1,6 +1,7 @@
 package com.grupo1.mindbody.reservations.service;
 
 import com.grupo1.mindbody.activities.service.IActivityService;
+import com.grupo1.mindbody.reservations.dto.ReservationQrResult;
 import com.grupo1.mindbody.reservations.dto.ReservationResponse;
 import com.grupo1.mindbody.reservations.exception.DuplicateReservationException;
 import com.grupo1.mindbody.reservations.exception.ReservationNotFoundException;
@@ -88,7 +89,8 @@ public class ReservationService implements IReservationService {
     }
 
     @Override
-    public Optional<Reservation> findByQrCode(String qrCode) {
-        return reservationRepository.findByQrCode(qrCode);
+    @Transactional(readOnly = true)
+    public Optional<ReservationQrResult> findByQrCode(String qrCode) {
+        return reservationRepository.findByQrCode(qrCode).map(ReservationQrResult::from);
     }
 }
