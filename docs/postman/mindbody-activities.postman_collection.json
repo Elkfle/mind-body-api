@@ -1,0 +1,366 @@
+{
+  "info": {
+    "name": "Mind&Body API — Activities BC",
+    "description": "Colección de pruebas para el Bounded Context Activities. Ejecutar en orden con Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "mb-activities-bc-grupo1-2026"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
+    { "key": "access_token", "value": "", "type": "string" },
+    { "key": "activity_id", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Activities",
+      "description": "CRUD de actividades deportivas — US06, US15, US16, US17",
+      "item": [
+        {
+          "name": "TC-ACT-00a Sign-up admin (setup auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Setup OK (201 o 400 si ya existe)', () => {",
+                  "    pm.expect([201, 400]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin_act@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Admin Activities\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-00b Sign-in (captura token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('access_token', pm.response.json().accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin_act@upc.edu.pe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-in"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-01 Crear actividad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => { pm.response.to.have.status(201); });",
+                  "pm.test('Respuesta tiene id', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.collectionVariables.set('activity_id', body.id);",
+                  "});",
+                  "pm.test('Status inicial es ACTIVE', () => { pm.expect(pm.response.json().status).to.eql('ACTIVE'); });",
+                  "pm.test('currentEnrollment arranca en 0', () => { pm.expect(pm.response.json().currentEnrollment).to.eql(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Yoga Matutino\",\n  \"description\": \"Clase de yoga para principiantes\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio A\",\n  \"location\": \"Pabellón H, Piso 2\",\n  \"maxCapacity\": 20,\n  \"date\": \"2026-06-15\",\n  \"startTime\": \"07:00:00\",\n  \"endTime\": \"08:00:00\",\n  \"institutionId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-02 Listar actividades paginadas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.test('PageResponse válido', () => {",
+                  "    const body = pm.response.json();",
+                  "    ['content','page','size','totalElements','totalPages','first','last'].forEach(k => pm.expect(body).to.have.property(k));",
+                  "});",
+                  "pm.test('totalElements >= 1', () => { pm.expect(pm.response.json().totalElements).to.be.at.least(1); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities?page=0&size=5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"],
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "5" }]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-03 Obtener por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.test('ID coincide', () => { pm.expect(pm.response.json().id).to.eql(parseInt(pm.collectionVariables.get('activity_id'))); });",
+                  "pm.test('Título correcto', () => { pm.expect(pm.response.json().title).to.eql('Yoga Matutino'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities", "{{activity_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-04 Editar actividad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Título actualizado', () => { pm.expect(pm.response.json().title).to.eql('Yoga Avanzado'); });",
+                  "pm.test('Capacidad actualizada', () => { pm.expect(pm.response.json().maxCapacity).to.eql(15); });",
+                  "pm.test('Status sigue ACTIVE', () => { pm.expect(pm.response.json().status).to.eql('ACTIVE'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Yoga Avanzado\",\n  \"description\": \"Clase de yoga nivel avanzado\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio B\",\n  \"location\": \"Pabellón H, Piso 3\",\n  \"maxCapacity\": 15,\n  \"date\": \"2026-06-15\",\n  \"startTime\": \"07:00:00\",\n  \"endTime\": \"08:30:00\",\n  \"institutionId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities", "{{activity_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-05 ID inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => { pm.response.to.have.status(404); });",
+                  "pm.test('ErrorResponse correcto', () => {",
+                  "    ['timestamp','status','error','message','path'].forEach(k => pm.expect(pm.response.json()).to.have.property(k));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/99999",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities", "99999"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-06 Validación — campos inválidos → 400 con details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('details no vacío', () => {",
+                  "    pm.expect(pm.response.json().details).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"maxCapacity\": 0,\n  \"category\": \"YOGA\",\n  \"venue\": \"\",\n  \"location\": \"\",\n  \"institutionId\": 1,\n  \"date\": \"2020-01-01\",\n  \"startTime\": \"10:00:00\",\n  \"endTime\": \"09:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-07 Crear segunda actividad (Basketball)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => { pm.response.to.have.status(201); });",
+                  "pm.test('Categoría BASKETBALL', () => { pm.expect(pm.response.json().category).to.eql('BASKETBALL'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Basketball Tarde\",\n  \"description\": \"Entrenamiento de basketball\",\n  \"category\": \"BASKETBALL\",\n  \"venue\": \"Cancha Principal\",\n  \"location\": \"Campo Deportivo\",\n  \"maxCapacity\": 10,\n  \"date\": \"2026-06-20\",\n  \"startTime\": \"16:00:00\",\n  \"endTime\": \"17:30:00\",\n  \"institutionId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-08 Reporte por categoría",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Array con category/totalActivities/totalEnrollment', () => {",
+                  "    pm.response.json().forEach(item => {",
+                  "        ['category','totalActivities','totalEnrollment'].forEach(k => pm.expect(item).to.have.property(k));",
+                  "    });",
+                  "});",
+                  "pm.test('Al menos 2 categorías', () => { pm.expect(pm.response.json().length).to.be.at.least(2); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/reports/by-category",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities", "reports", "by-category"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-09 Cancelar actividad → 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 204', () => { pm.response.to.have.status(204); });"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities", "{{activity_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-10 Verificar status CANCELLED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Status CANCELLED', () => { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities", "{{activity_id}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

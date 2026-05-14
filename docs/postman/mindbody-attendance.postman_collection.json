@@ -1,0 +1,392 @@
+{
+  "info": {
+    "name": "Mind&Body API — Attendance BC",
+    "description": "Colección de pruebas para el Bounded Context Attendance. Ejecutar en orden con Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "mb-attendance-bc-grupo1-2026"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
+    { "key": "admin_token", "value": "", "type": "string" },
+    { "key": "student_token", "value": "", "type": "string" },
+    { "key": "activity_id", "value": "", "type": "string" },
+    { "key": "qr_code", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Attendance",
+      "description": "Registro de asistencia por QR — US relacionados con Attendance BC",
+      "item": [
+        {
+          "name": "TC-ATT-00a Sign-up admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Setup OK (201 o 400)', () => { pm.expect([201, 400]).to.include(pm.response.code); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin_att@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Admin Attendance\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-00b Sign-in admin (captura token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('admin_token', pm.response.json().accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin_att@upc.edu.pe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-in"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-00c Crear actividad (setup)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => { pm.response.to.have.status(201); });",
+                  "pm.collectionVariables.set('activity_id', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Yoga Asistencia\",\n  \"description\": \"Actividad para pruebas de asistencia\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio D\",\n  \"location\": \"Pabellón B\",\n  \"maxCapacity\": 10,\n  \"date\": \"2026-12-15\",\n  \"startTime\": \"08:00:00\",\n  \"endTime\": \"09:00:00\",\n  \"institutionId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-00d Sign-up estudiante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Setup OK (201 o 400)', () => { pm.expect([201, 400]).to.include(pm.response.code); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student_att@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Estudiante Attendance\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-00e Sign-in estudiante (captura token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('student_token', pm.response.json().accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student_att@upc.edu.pe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-in"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-00f Crear reserva (captura qrCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => { pm.response.to.have.status(201); });",
+                  "pm.test('qrCode capturado', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('qrCode');",
+                  "    pm.collectionVariables.set('qr_code', body.qrCode);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{student_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activityId\": {{activity_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reservations",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reservations"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-01 Escanear QR → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => { pm.response.to.have.status(201); });",
+                  "pm.test('Registro tiene id, activityId, userId y scannedAt', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('activityId');",
+                  "    pm.expect(body).to.have.property('userId');",
+                  "    pm.expect(body).to.have.property('scannedAt');",
+                  "});",
+                  "pm.test('activityId coincide', () => {",
+                  "    pm.expect(pm.response.json().activityId).to.eql(parseInt(pm.collectionVariables.get('activity_id')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrCode\": \"{{qr_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/attendance/scan",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "attendance", "scan"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-02 QR duplicado → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('Mensaje de asistencia duplicada', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('ya fue registrada');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrCode\": \"{{qr_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/attendance/scan",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "attendance", "scan"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-03 QR inválido → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('Mensaje de QR inválido', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('ninguna reserva');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrCode\": \"00000000-0000-0000-0000-000000000000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/attendance/scan",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "attendance", "scan"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-04 Listar asistentes de actividad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Array con al menos 1 registro', () => {",
+                  "    pm.expect(pm.response.json()).to.be.an('array').with.length.at.least(1);",
+                  "});",
+                  "pm.test('Cada registro tiene scannedAt', () => {",
+                  "    pm.response.json().forEach(r => pm.expect(r).to.have.property('scannedAt'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/attendance/activity/{{activity_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "attendance", "activity", "{{activity_id}}"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-05 Ver mi historial de asistencia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Array con al menos 1 registro', () => {",
+                  "    pm.expect(pm.response.json()).to.be.an('array').with.length.at.least(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/attendance/my",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "attendance", "my"]
+            }
+          }
+        },
+        {
+          "name": "TC-ATT-06 Resumen de asistencia por actividad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Estructura correcta del resumen', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('activityId');",
+                  "    pm.expect(body).to.have.property('totalReservations');",
+                  "    pm.expect(body).to.have.property('totalAttended');",
+                  "    pm.expect(body).to.have.property('attendanceRate');",
+                  "});",
+                  "pm.test('totalAttended es 1', () => { pm.expect(pm.response.json().totalAttended).to.eql(1); });",
+                  "pm.test('attendanceRate > 0', () => { pm.expect(pm.response.json().attendanceRate).to.be.above(0); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/attendance/activity/{{activity_id}}/summary",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "attendance", "activity", "{{activity_id}}", "summary"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
