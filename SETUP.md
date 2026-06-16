@@ -448,7 +448,7 @@ docs/postman/
 ```
 
 > ⚠️ **Orden de ejecución**: ejecutar `mindbody-institutions` primero. Crea la institución con `id=1` que usan todos los demás BCs en sus sign-up y al crear actividades.
-> ⚠️ **Chatbot**: requiere `OPENAI_API_KEY` configurada como variable de entorno. Sin ella, los TC-CHAT-01/02/03/04 devuelven 503. TC-CHAT-05 (validación) funciona sin API key.
+> ⚠️ **Chatbot**: requiere `GEMINI_API_KEY` configurada como variable de entorno. Sin ella, los TC-CHAT-01/02/03/04 devuelven 503. TC-CHAT-05 (validación) funciona sin API key.
 
 ---
 
@@ -505,9 +505,11 @@ docs/postman/
 | 16/06/2026 | Corregido `GET /auth/me` → 500: `AuthService.getProfile()` — agregado `@Transactional(readOnly=true)` y recarga el usuario con `userRepository.findById()` | `getProfile()` recibía el `User` del filtro JWT (sesión Hibernate cerrada); al acceder a `user.getInstitution().getName()` lanzaba `LazyInitializationException` → 500. La transacción activa permite que Hibernate resuelva la relación LAZY dentro de la misma sesión |
 | 16/06/2026 | Corregidos TC-ACT-01 y TC-ACT-04 en colección Postman Activities: `"date": "2026-06-15"` → `"2026-12-01"`; TC-ACT-07: `"2026-06-20"` → `"2026-12-05"` | Las fechas eran pasadas al momento de correr los tests (hoy 16/06/2026), `@Future` las rechazaba con 400; TC-ACT-01 nunca insertaba Yoga → `activity_id` quedaba vacío → TC-ACT-09/10 iban a `/api/v1/activities/` (sin ID) → 500 |
 | 16/06/2026 | Actualizado `GlobalExceptionHandler`: agregado handler para `NoResourceFoundException` → 404 | Spring lanza `NoResourceFoundException` cuando la URL tiene un segmento de path vacío (ej. `/api/v1/activities/` sin ID) y no coincide con ningún endpoint ni recurso estático; el catch-all `Exception.class` lo devolvía como 500 |
-| 16/06/2026 | **US07:** Filtrado de actividades por categoría, fecha y ubicación — `ActivityRepository.findByFilters()` con `@Query` JPQL y parámetros opcionales; `IActivityService` + `ActivityService` + `ActivityController` actualizados; `GET /api/v1/activities?category=YOGA&date=2026-12-01&location=Gimnasio` | US07 — el AC exige filtros opcionales combinables; el patrón `:param IS NULL OR a.field = :param` en JPQL permite omitir cualquier filtro sin cambiar el endpoint |
-| 16/06/2026 | **US12-13-14 (Chatbot BC):** nuevo BC completo — modelos (Conversation, Message, UserPreference + enums Intent/Sender/FitnessLevel), DTOs, 3 repositorios, UserPreferenceMapper, UserPreferenceService, ChatbotService (integración OpenAI via RestClient), OpenAiClient, ChatbotController, PreferenceController, ChatbotUnavailableException → 503 | US12 (acceso chatbot), US13 (consulta por rango horario), US14 (reservar desde chatbot); integración con OpenAI gpt-4o-mini configurada via `OPENAI_API_KEY` env var; chatbot responde JSON estructurado con `reply`, `intent` y `activityId` para que el servicio actúe según la intención detectada |
+| 16/06/2026 | **US07:** Filtrado de actividades por categoría, fecha y ubicación — `ActivityRepository.findByFilters()` con `@Query` JPQL y parámetros opcionales; `IActivityService` + `ActivityService` + `ActivityController` actualizados; `GET /api/v1/activities?category=YOGA&date=2026-12-01&location=Gimnasio` | US07 — el AC exige filtros opcionales combinables |
+| 16/06/2026 | **US12-13-14 (Chatbot BC):** nuevo BC completo — modelos (Conversation, Message, UserPreference + enums Intent/Sender/FitnessLevel), DTOs, 3 repositorios, UserPreferenceMapper, UserPreferenceService, ChatbotService (integración Gemini via RestClient), GeminiClient, ChatbotController, PreferenceController, ChatbotUnavailableException → 503 | US12 (acceso chatbot), US13 (consulta por rango horario), US14 (reservar desde chatbot); integración con Gemini `gemini-2.0-flash` configurada via `GEMINI_API_KEY` env var; chatbot responde JSON estructurado con `reply`, `intent` y `activityId` para que el servicio actúe según la intención detectada |
 | 16/06/2026 | Creadas colecciones Postman `mindbody-chatbot.postman_collection.json` y actualizados casos de filtrado en `mindbody-activities.postman_collection.json` | TC-CHAT-01 a TC-CHAT-05 (saludo, rango horario, reserva, fuera-de-scope, mensaje vacío); TC-ACT-07b/07c para filtros por categoría y fecha |
+| 16/06/2026 | **Fix:** `ActivityRepository.findByFilters()` reescrito con boolean flags (`filterCategory`, `filterDate`, `filterLocation`) en lugar del patrón `:param IS NULL OR ...` | Hibernate 7 (Spring Boot 4.x) no puede inferir el tipo JDBC de parámetros tipados nulos (enum, LocalDate) en expresiones `IS NULL` — lanzaba `QueryException` → 500. Los flags booleanos evitan pasar null para parámetros tipados; TC-ACT-07b y TC-ACT-07c pasan |
+| 16/06/2026 | **Fix:** `GeminiClient` migrado de API v1beta a v1; `systemInstruction` eliminado (no soportado en v1); system prompt inyectado como primer turno `user/model` del historial; modelo por defecto actualizado a `gemini-2.0-flash` | v1beta no tenía disponible `gemini-1.5-flash`; v1 no soporta los campos `systemInstruction` ni `responseMimeType`; el patrón de turno inicial es compatible con cualquier versión de la API |
 
 ---
 
@@ -527,7 +529,7 @@ src/main/java/com/grupo1/mindbody/chatbot/
 │   ├── ChatbotService.java          ← orquesta conversación + LLM + reserva automática
 │   ├── IUserPreferenceService.java
 │   ├── UserPreferenceService.java
-│   └── OpenAiClient.java            ← RestClient → OpenAI /v1/chat/completions
+│   └── GeminiClient.java            ← RestClient → Gemini API v1 /models/{model}:generateContent
 ├── repository/
 │   ├── ConversationRepository.java
 │   ├── MessageRepository.java
@@ -547,7 +549,7 @@ src/main/java/com/grupo1/mindbody/chatbot/
 ├── mapper/
 │   └── UserPreferenceMapper.java    ← MapStruct (FitnessLevel enum → String en response)
 └── exception/
-    └── ChatbotUnavailableException.java  ← 503 cuando OPENAI_API_KEY no está configurada
+    └── ChatbotUnavailableException.java  ← 503 cuando GEMINI_API_KEY no está configurada o falla la API
 ```
 
 ### 17.2 Endpoints
@@ -564,7 +566,7 @@ src/main/java/com/grupo1/mindbody/chatbot/
 2. Persiste el mensaje del usuario en `messages`
 3. Carga preferencias del usuario + actividades disponibles → construye system prompt
 4. Carga historial de la conversación (últimos 10 mensajes)
-5. Llama a OpenAI `gpt-4o-mini` con el prompt y el historial
+5. Llama a Gemini `gemini-2.0-flash` con el historial (system prompt inyectado como primer turno)
 6. El LLM devuelve JSON `{"reply":"...","intent":"...","activityId":null|N}`
 7. Si `intent=MAKE_RESERVATION` y `activityId` es no nulo → llama a `IReservationService.create()`
 8. Persiste la respuesta del bot y devuelve `ChatQueryResponse`
@@ -574,16 +576,18 @@ src/main/java/com/grupo1/mindbody/chatbot/
 En `application-local.yml` (y `application-prod.yml`):
 ```yaml
 app:
-  openai:
-    api-key: ${OPENAI_API_KEY:}     # Required: clave de API de OpenAI
-    model: ${OPENAI_MODEL:gpt-4o-mini}
+  gemini:
+    api-key: ${GEMINI_API_KEY:}        # Required: clave de API de Gemini
+    model: ${GEMINI_MODEL:gemini-2.0-flash}
 ```
 
 Variables de entorno necesarias:
-- `OPENAI_API_KEY` — clave de API de OpenAI (https://platform.openai.com/api-keys)
-- `OPENAI_MODEL` — modelo a usar (por defecto `gpt-4o-mini`)
+- `GEMINI_API_KEY` — clave de API de Gemini (https://aistudio.google.com → Get API Key)
+- `GEMINI_MODEL` — modelo a usar (por defecto `gemini-2.0-flash`)
 
-Sin `OPENAI_API_KEY`, el chatbot devuelve 503. La validación de entrada (mensaje vacío → 400) funciona sin la clave.
+Sin `GEMINI_API_KEY`, el chatbot devuelve 503. La validación de entrada (mensaje vacío → 400) funciona sin la clave.
+
+> ⚠️ El quota de Gemini es **por proyecto**, no por API key. Si el quota se agota, crear una nueva key dentro del mismo proyecto no ayuda — hay que crear un proyecto nuevo en Google AI Studio.
 
 ### 17.5 Casos de prueba Postman
 
