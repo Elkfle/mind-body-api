@@ -8,6 +8,9 @@ import com.grupo1.mindbody.activities.mapper.ActivityMapper;
 import com.grupo1.mindbody.activities.model.Activity;
 import com.grupo1.mindbody.activities.model.ActivityStatus;
 import com.grupo1.mindbody.activities.repository.ActivityRepository;
+import com.grupo1.mindbody.institutions.exception.InstitutionNotFoundException;
+import com.grupo1.mindbody.institutions.model.Institution;
+import com.grupo1.mindbody.institutions.repository.InstitutionRepository;
 import com.grupo1.mindbody.shared.exception.BusinessRuleException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,11 +25,14 @@ import java.util.List;
 public class ActivityService implements IActivityService {
 
     private final ActivityRepository activityRepository;
+    private final InstitutionRepository institutionRepository;
     private final ActivityMapper activityMapper;
 
     @Override
     @Transactional
     public ActivityResponse create(ActivityRequest request, Long adminId) {
+        Institution institution = institutionRepository.findById(request.institutionId())
+            .orElseThrow(() -> new InstitutionNotFoundException(request.institutionId()));
         Activity activity = Activity.builder()
             .title(request.title())
             .description(request.description())
@@ -38,7 +44,7 @@ public class ActivityService implements IActivityService {
             .date(request.date())
             .startTime(request.startTime())
             .endTime(request.endTime())
-            .institutionId(request.institutionId())
+            .institution(institution)
             .createdByAdminId(adminId)
             .build();
         return activityMapper.toResponse(activityRepository.save(activity));

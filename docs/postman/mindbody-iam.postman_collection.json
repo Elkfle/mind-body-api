@@ -70,14 +70,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"estudiante@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Juan Pérez\",\n  \"phone\": \"987654321\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+              "raw": "{\n  \"email\": \"estudiante@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Pérez\",\n  \"phone\": \"987654321\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/sign-up",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "auth", "sign-up"]
             },
-            "description": "Registra un estudiante. Captura access_token y refresh_token para los tests siguientes."
+            "description": "Registra un estudiante. Requiere institution con id=1 creada previamente. Captura access_token y refresh_token."
           }
         },
         {
@@ -110,7 +110,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@upc.edu.pe\",\n  \"password\": \"adminpass123\",\n  \"name\": \"Admin UPC\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
+              "raw": "{\n  \"email\": \"admin@upc.edu.pe\",\n  \"password\": \"adminpass123\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"UPC\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/sign-up",
@@ -146,7 +146,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"estudiante@upc.edu.pe\",\n  \"password\": \"otrapass123\",\n  \"name\": \"Otro Usuario\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+              "raw": "{\n  \"email\": \"estudiante@upc.edu.pe\",\n  \"password\": \"otrapass123\",\n  \"firstName\": \"Otro\",\n  \"lastName\": \"Usuario\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/sign-up",
@@ -285,7 +285,8 @@
                   "    const body = pm.response.json();",
                   "    pm.expect(body).to.have.property('id');",
                   "    pm.expect(body).to.have.property('email');",
-                  "    pm.expect(body).to.have.property('name');",
+                  "    pm.expect(body).to.have.property('firstName');",
+                  "    pm.expect(body).to.have.property('lastName');",
                   "    pm.expect(body).to.have.property('role');",
                   "    pm.expect(body).to.have.property('active');",
                   "});",

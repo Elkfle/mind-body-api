@@ -1,5 +1,6 @@
 package com.grupo1.mindbody.activities.model;
 
+import com.grupo1.mindbody.institutions.model.Institution;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -51,8 +52,9 @@ public class Activity {
     @Column(nullable = false)
     private LocalTime endTime;
 
-    @Column(nullable = false)
-    private Long institutionId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "institution_id", nullable = false)
+    private Institution institution;
 
     @Column(nullable = false)
     private Long createdByAdminId;

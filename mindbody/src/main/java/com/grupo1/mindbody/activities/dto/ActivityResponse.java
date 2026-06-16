@@ -20,6 +20,7 @@ public record ActivityResponse(
     LocalTime startTime,
     LocalTime endTime,
     Long institutionId,
+    String institutionName,
     Long createdByAdminId,
     LocalDateTime createdAt
 ) {}
