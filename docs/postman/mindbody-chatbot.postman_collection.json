@@ -1,0 +1,337 @@
+{
+  "info": {
+    "name": "Mind&Body API — Chatbot BC",
+    "description": "Colección de pruebas para el Bounded Context Chatbot (US12, US13, US14) y Preferences. Ejecutar en orden con Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "mb-chatbot-bc-grupo1-2026"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
+    { "key": "access_token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "TC-CHAT-00a Sign-up estudiante (setup)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Setup OK (201 o 400 si ya existe)', () => {",
+                  "    pm.expect([201, 400]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"estudiante_chat@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"firstName\": \"Estudiante\",\n  \"lastName\": \"Chatbot\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            }
+          }
+        },
+        {
+          "name": "TC-CHAT-00b Sign-in (captura token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('access_token', pm.response.json().accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"estudiante_chat@upc.edu.pe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-in"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Preferences",
+      "item": [
+        {
+          "name": "TC-PREF-01 Guardar preferencias del usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => { pm.response.to.have.status(201); });",
+                  "pm.test('Preferencias tienen id', () => { pm.expect(pm.response.json()).to.have.property('id'); });",
+                  "pm.test('fitnessLevel correcto', () => { pm.expect(pm.response.json().fitnessLevel).to.eql('BEGINNER'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferredSports\": \"YOGA, BASKETBALL\",\n  \"preferredTimes\": \"Mañana (7am-9am) y tarde (4pm-7pm)\",\n  \"fitnessLevel\": \"BEGINNER\",\n  \"goals\": \"Mejorar flexibilidad y resistencia\",\n  \"healthNotes\": \"Sin lesiones previas\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/preferences",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "preferences"]
+            }
+          }
+        },
+        {
+          "name": "TC-PREF-02 Obtener mis preferencias",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Tiene campos requeridos', () => {",
+                  "    ['id','preferredSports','fitnessLevel','goals'].forEach(k => pm.expect(pm.response.json()).to.have.property(k));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/preferences/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "preferences", "me"]
+            }
+          }
+        },
+        {
+          "name": "TC-PREF-03 Preferencias inexistentes → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Sin token → 401', () => { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/preferences/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "preferences", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chatbot",
+      "item": [
+        {
+          "name": "TC-CHAT-01 US12 — Saludo inicial (acceso al chatbot)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Respuesta tiene conversationId y reply', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('conversationId');",
+                  "    pm.expect(body).to.have.property('reply');",
+                  "    pm.expect(body.reply).to.be.a('string').that.is.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hola, ¿qué actividades deportivas hay disponibles?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chatbot/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "chatbot", "query"]
+            }
+          }
+        },
+        {
+          "name": "TC-CHAT-02 US13 — Consulta por rango horario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Intent es SEARCH_ACTIVITY', () => {",
+                  "    pm.expect(pm.response.json().intent).to.eql('SEARCH_ACTIVITY');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Tengo disponible de 7am a 9am, ¿qué eventos hay en ese horario?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chatbot/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "chatbot", "query"]
+            }
+          }
+        },
+        {
+          "name": "TC-CHAT-03 US14 — Reservar actividad desde chatbot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Intent es MAKE_RESERVATION o tiene reply de confirmación', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(['MAKE_RESERVATION','SEARCH_ACTIVITY']).to.include(body.intent);",
+                  "    pm.expect(body.reply).to.be.a('string').that.is.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Quiero reservar una clase de yoga\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chatbot/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "chatbot", "query"]
+            }
+          }
+        },
+        {
+          "name": "TC-CHAT-04 Pregunta fuera de scope → respuesta acotada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Intent es UNKNOWN', () => {",
+                  "    pm.expect(pm.response.json().intent).to.eql('UNKNOWN');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"¿Cuál es el resultado del partido de ayer?\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chatbot/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "chatbot", "query"]
+            }
+          }
+        },
+        {
+          "name": "TC-CHAT-05 Mensaje vacío → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('ErrorResponse con details', () => {",
+                  "    pm.expect(pm.response.json().details).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/chatbot/query",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "chatbot", "query"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

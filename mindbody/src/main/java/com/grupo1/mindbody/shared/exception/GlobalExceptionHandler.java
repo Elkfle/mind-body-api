@@ -1,5 +1,6 @@
 package com.grupo1.mindbody.shared.exception;
 
+import com.grupo1.mindbody.chatbot.exception.ChatbotUnavailableException;
 import com.grupo1.mindbody.iam.exception.InvalidTokenException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -75,6 +76,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAuthentication(
             AuthenticationException ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, "Credenciales inválidas", req, null);
+    }
+
+    @ExceptionHandler(ChatbotUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleChatbotUnavailable(
+            ChatbotUnavailableException ex, HttpServletRequest req) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), req, null);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

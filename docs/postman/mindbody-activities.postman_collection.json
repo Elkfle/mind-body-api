@@ -287,6 +287,60 @@
           }
         },
         {
+          "name": "TC-ACT-07b Filtrar por categoría BASKETBALL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Solo resultados BASKETBALL', () => {",
+                  "    pm.response.json().content.forEach(a => pm.expect(a.category).to.eql('BASKETBALL'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities?category=BASKETBALL",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"],
+              "query": [{ "key": "category", "value": "BASKETBALL" }]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-07c Filtrar sin resultados → totalElements 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Sin resultados para fecha pasada', () => {",
+                  "    pm.expect(pm.response.json().totalElements).to.eql(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities?date=2020-01-01",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"],
+              "query": [{ "key": "date", "value": "2020-01-01" }]
+            }
+          }
+        },
+        {
           "name": "TC-ACT-08 Reporte por categoría",
           "event": [
             {

@@ -24,6 +24,7 @@
 - [14. Bounded Context: Reservations](#14-bounded-context-reservations)
 - [15. Bounded Context: Attendance](#15-bounded-context-attendance)
 - [16. Bounded Context: Institutions](#16-bounded-context-institutions)
+- [17. Bounded Context: Chatbot](#17-bounded-context-chatbot)
 
 ---
 
@@ -440,12 +441,14 @@ Cada integrante debe agregar su colección en `docs/postman/` con el nombre `min
 docs/postman/
 ├── mindbody-institutions.postman_collection.json ← Transversal ✅ (ejecutar primero)
 ├── mindbody-iam.postman_collection.json          ← Bussalleu ✅
-├── mindbody-activities.postman_collection.json   ← Colfer ✅
+├── mindbody-activities.postman_collection.json   ← Colfer ✅ (US06, US07, US15-17)
 ├── mindbody-reservations.postman_collection.json ← Tejada ✅
-└── mindbody-attendance.postman_collection.json   ← Ruiz ✅
+├── mindbody-attendance.postman_collection.json   ← Ruiz ✅
+└── mindbody-chatbot.postman_collection.json      ← Ruiz ✅ (US12, US13, US14)
 ```
 
 > ⚠️ **Orden de ejecución**: ejecutar `mindbody-institutions` primero. Crea la institución con `id=1` que usan todos los demás BCs en sus sign-up y al crear actividades.
+> ⚠️ **Chatbot**: requiere `OPENAI_API_KEY` configurada como variable de entorno. Sin ella, los TC-CHAT-01/02/03/04 devuelven 503. TC-CHAT-05 (validación) funciona sin API key.
 
 ---
 
@@ -502,6 +505,100 @@ docs/postman/
 | 16/06/2026 | Corregido `GET /auth/me` → 500: `AuthService.getProfile()` — agregado `@Transactional(readOnly=true)` y recarga el usuario con `userRepository.findById()` | `getProfile()` recibía el `User` del filtro JWT (sesión Hibernate cerrada); al acceder a `user.getInstitution().getName()` lanzaba `LazyInitializationException` → 500. La transacción activa permite que Hibernate resuelva la relación LAZY dentro de la misma sesión |
 | 16/06/2026 | Corregidos TC-ACT-01 y TC-ACT-04 en colección Postman Activities: `"date": "2026-06-15"` → `"2026-12-01"`; TC-ACT-07: `"2026-06-20"` → `"2026-12-05"` | Las fechas eran pasadas al momento de correr los tests (hoy 16/06/2026), `@Future` las rechazaba con 400; TC-ACT-01 nunca insertaba Yoga → `activity_id` quedaba vacío → TC-ACT-09/10 iban a `/api/v1/activities/` (sin ID) → 500 |
 | 16/06/2026 | Actualizado `GlobalExceptionHandler`: agregado handler para `NoResourceFoundException` → 404 | Spring lanza `NoResourceFoundException` cuando la URL tiene un segmento de path vacío (ej. `/api/v1/activities/` sin ID) y no coincide con ningún endpoint ni recurso estático; el catch-all `Exception.class` lo devolvía como 500 |
+| 16/06/2026 | **US07:** Filtrado de actividades por categoría, fecha y ubicación — `ActivityRepository.findByFilters()` con `@Query` JPQL y parámetros opcionales; `IActivityService` + `ActivityService` + `ActivityController` actualizados; `GET /api/v1/activities?category=YOGA&date=2026-12-01&location=Gimnasio` | US07 — el AC exige filtros opcionales combinables; el patrón `:param IS NULL OR a.field = :param` en JPQL permite omitir cualquier filtro sin cambiar el endpoint |
+| 16/06/2026 | **US12-13-14 (Chatbot BC):** nuevo BC completo — modelos (Conversation, Message, UserPreference + enums Intent/Sender/FitnessLevel), DTOs, 3 repositorios, UserPreferenceMapper, UserPreferenceService, ChatbotService (integración OpenAI via RestClient), OpenAiClient, ChatbotController, PreferenceController, ChatbotUnavailableException → 503 | US12 (acceso chatbot), US13 (consulta por rango horario), US14 (reservar desde chatbot); integración con OpenAI gpt-4o-mini configurada via `OPENAI_API_KEY` env var; chatbot responde JSON estructurado con `reply`, `intent` y `activityId` para que el servicio actúe según la intención detectada |
+| 16/06/2026 | Creadas colecciones Postman `mindbody-chatbot.postman_collection.json` y actualizados casos de filtrado en `mindbody-activities.postman_collection.json` | TC-CHAT-01 a TC-CHAT-05 (saludo, rango horario, reserva, fuera-de-scope, mensaje vacío); TC-ACT-07b/07c para filtros por categoría y fecha |
+
+---
+
+## 17. Bounded Context: Chatbot
+
+**US:** US12 (acceso chatbot), US13 (consulta por rango horario), US14 (reserva desde chatbot)
+
+### 17.1 Archivos implementados
+
+```
+src/main/java/com/grupo1/mindbody/chatbot/
+├── controller/
+│   ├── ChatbotController.java       ← POST /api/v1/chatbot/query
+│   └── PreferenceController.java    ← POST /api/v1/preferences, GET /api/v1/preferences/me
+├── service/
+│   ├── IChatbotService.java
+│   ├── ChatbotService.java          ← orquesta conversación + LLM + reserva automática
+│   ├── IUserPreferenceService.java
+│   ├── UserPreferenceService.java
+│   └── OpenAiClient.java            ← RestClient → OpenAI /v1/chat/completions
+├── repository/
+│   ├── ConversationRepository.java
+│   ├── MessageRepository.java
+│   └── UserPreferenceRepository.java
+├── model/
+│   ├── Conversation.java            ← @Entity conversations
+│   ├── Message.java                 ← @Entity messages
+│   ├── UserPreference.java          ← @Entity user_preferences
+│   ├── Intent.java (enum)           ← SEARCH_ACTIVITY, MAKE_RESERVATION, CHECK_MY_SCHEDULE, CANCEL_RESERVATION, UNKNOWN
+│   ├── Sender.java (enum)           ← USER, BOT
+│   └── FitnessLevel.java (enum)     ← BEGINNER, INTERMEDIATE, ADVANCED
+├── dto/
+│   ├── ChatQueryRequest.java        ← { message: String }
+│   ├── ChatQueryResponse.java       ← { conversationId, reply, intent, suggestions[] }
+│   ├── UserPreferenceRequest.java
+│   └── UserPreferenceResponse.java
+├── mapper/
+│   └── UserPreferenceMapper.java    ← MapStruct (FitnessLevel enum → String en response)
+└── exception/
+    └── ChatbotUnavailableException.java  ← 503 cuando OPENAI_API_KEY no está configurada
+```
+
+### 17.2 Endpoints
+
+| Método | Endpoint | Descripción | Auth |
+|---|---|---|---|
+| POST | `/api/v1/chatbot/query` | Enviar mensaje al chatbot | Sí |
+| POST | `/api/v1/preferences` | Guardar/actualizar preferencias deportivas | Sí |
+| GET | `/api/v1/preferences/me` | Consultar preferencias propias | Sí |
+
+### 17.3 Flujo de query
+
+1. Encuentra o crea conversación `ACTIVE` para el usuario
+2. Persiste el mensaje del usuario en `messages`
+3. Carga preferencias del usuario + actividades disponibles → construye system prompt
+4. Carga historial de la conversación (últimos 10 mensajes)
+5. Llama a OpenAI `gpt-4o-mini` con el prompt y el historial
+6. El LLM devuelve JSON `{"reply":"...","intent":"...","activityId":null|N}`
+7. Si `intent=MAKE_RESERVATION` y `activityId` es no nulo → llama a `IReservationService.create()`
+8. Persiste la respuesta del bot y devuelve `ChatQueryResponse`
+
+### 17.4 Configuración
+
+En `application-local.yml` (y `application-prod.yml`):
+```yaml
+app:
+  openai:
+    api-key: ${OPENAI_API_KEY:}     # Required: clave de API de OpenAI
+    model: ${OPENAI_MODEL:gpt-4o-mini}
+```
+
+Variables de entorno necesarias:
+- `OPENAI_API_KEY` — clave de API de OpenAI (https://platform.openai.com/api-keys)
+- `OPENAI_MODEL` — modelo a usar (por defecto `gpt-4o-mini`)
+
+Sin `OPENAI_API_KEY`, el chatbot devuelve 503. La validación de entrada (mensaje vacío → 400) funciona sin la clave.
+
+### 17.5 Casos de prueba Postman
+
+| ID | Descripción | US |
+|---|---|---|
+| TC-CHAT-00a | Sign-up estudiante (setup) | — |
+| TC-CHAT-00b | Sign-in, captura token | — |
+| TC-PREF-01 | Guardar preferencias | — |
+| TC-PREF-02 | Obtener mis preferencias | — |
+| TC-PREF-03 | Sin token → 401 | — |
+| TC-CHAT-01 | Saludo inicial → 200, conversationId + reply | US12 |
+| TC-CHAT-02 | Consulta por rango horario → intent SEARCH_ACTIVITY | US13 |
+| TC-CHAT-03 | Reservar actividad → intent MAKE_RESERVATION | US14 |
+| TC-CHAT-04 | Pregunta fuera de scope → intent UNKNOWN | US12 |
+| TC-CHAT-05 | Mensaje vacío → 400 con details[] | US12 |
 
 ---
 

@@ -6,6 +6,7 @@ import com.grupo1.mindbody.activities.dto.ActivitySummaryReport;
 import com.grupo1.mindbody.activities.exception.ActivityNotFoundException;
 import com.grupo1.mindbody.activities.mapper.ActivityMapper;
 import com.grupo1.mindbody.activities.model.Activity;
+import com.grupo1.mindbody.activities.model.ActivityCategory;
 import com.grupo1.mindbody.activities.model.ActivityStatus;
 import com.grupo1.mindbody.activities.repository.ActivityRepository;
 import com.grupo1.mindbody.institutions.exception.InstitutionNotFoundException;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -55,6 +57,17 @@ public class ActivityService implements IActivityService {
     public Page<ActivityResponse> findAll(Pageable pageable) {
         return activityRepository.findAll(pageable)
             .map(activityMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ActivityResponse> findByFilters(ActivityCategory category, LocalDate date, String location, Pageable pageable) {
+        return activityRepository.findByFilters(
+            category != null, category != null ? category : ActivityCategory.YOGA,
+            date != null, date != null ? date : LocalDate.of(2000, 1, 1),
+            location != null && !location.isBlank(), location != null ? location : "",
+            pageable
+        ).map(activityMapper::toResponse);
     }
 
     @Override
