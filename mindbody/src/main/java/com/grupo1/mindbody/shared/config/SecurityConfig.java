@@ -34,7 +34,7 @@ public class SecurityConfig {
         "/api/v1/auth/sign-out",
         "/swagger-ui.html",
         "/swagger-ui/**",
-        "/api-docs/**",
+        "/v3/api-docs/**",
         "/actuator/health"
     };
 
