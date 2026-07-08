@@ -6,3 +6,19 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:local}
   application:
     name: mindbody
+  ai:
+    openai:
+      # Spring AI habla con Gemini a través de su endpoint compatible con OpenAI.
+      # Reutiliza la key gratuita de Google AI Studio (variable GEMINI_API_KEY).
+      api-key: ${GEMINI_API_KEY:not-configured}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai
+      chat:
+        completions-path: /chat/completions
+        options:
+          # gemini-2.5-flash tiene free tier; 2.0-flash daba cuota 0 en el proyecto de la key
+          model: ${AI_CHAT_MODEL:gemini-2.5-flash}
+          temperature: 0.4
+      embedding:
+        embeddings-path: /embeddings
+        options:
+          model: ${AI_EMBEDDING_MODEL:text-embedding-004}
