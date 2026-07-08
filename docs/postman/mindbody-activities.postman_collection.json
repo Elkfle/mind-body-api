@@ -35,7 +35,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin_act@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Admin Activities\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
+              "raw": "{\n  \"email\": \"admin_act@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"Activities\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/sign-up",
@@ -100,7 +100,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Yoga Matutino\",\n  \"description\": \"Clase de yoga para principiantes\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio A\",\n  \"location\": \"Pabellón H, Piso 2\",\n  \"maxCapacity\": 20,\n  \"date\": \"2026-06-15\",\n  \"startTime\": \"07:00:00\",\n  \"endTime\": \"08:00:00\",\n  \"institutionId\": 1\n}"
+              "raw": "{\n  \"title\": \"Yoga Matutino\",\n  \"description\": \"Clase de yoga para principiantes\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio A\",\n  \"location\": \"Pabellón H, Piso 2\",\n  \"maxCapacity\": 20,\n  \"date\": \"2026-12-01\",\n  \"startTime\": \"07:00:00\",\n  \"endTime\": \"08:00:00\",\n  \"institutionId\": 1\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/activities",
@@ -187,7 +187,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Yoga Avanzado\",\n  \"description\": \"Clase de yoga nivel avanzado\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio B\",\n  \"location\": \"Pabellón H, Piso 3\",\n  \"maxCapacity\": 15,\n  \"date\": \"2026-06-15\",\n  \"startTime\": \"07:00:00\",\n  \"endTime\": \"08:30:00\",\n  \"institutionId\": 1\n}"
+              "raw": "{\n  \"title\": \"Yoga Avanzado\",\n  \"description\": \"Clase de yoga nivel avanzado\",\n  \"category\": \"YOGA\",\n  \"venue\": \"Gimnasio B\",\n  \"location\": \"Pabellón H, Piso 3\",\n  \"maxCapacity\": 15,\n  \"date\": \"2026-12-01\",\n  \"startTime\": \"07:00:00\",\n  \"endTime\": \"08:30:00\",\n  \"institutionId\": 1\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/activities/{{activity_id}}",
@@ -277,12 +277,66 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Basketball Tarde\",\n  \"description\": \"Entrenamiento de basketball\",\n  \"category\": \"BASKETBALL\",\n  \"venue\": \"Cancha Principal\",\n  \"location\": \"Campo Deportivo\",\n  \"maxCapacity\": 10,\n  \"date\": \"2026-06-20\",\n  \"startTime\": \"16:00:00\",\n  \"endTime\": \"17:30:00\",\n  \"institutionId\": 1\n}"
+              "raw": "{\n  \"title\": \"Basketball Tarde\",\n  \"description\": \"Entrenamiento de basketball\",\n  \"category\": \"BASKETBALL\",\n  \"venue\": \"Cancha Principal\",\n  \"location\": \"Campo Deportivo\",\n  \"maxCapacity\": 10,\n  \"date\": \"2026-12-05\",\n  \"startTime\": \"16:00:00\",\n  \"endTime\": \"17:30:00\",\n  \"institutionId\": 1\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/activities",
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities"]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-07b Filtrar por categoría BASKETBALL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Solo resultados BASKETBALL', () => {",
+                  "    pm.response.json().content.forEach(a => pm.expect(a.category).to.eql('BASKETBALL'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities?category=BASKETBALL",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"],
+              "query": [{ "key": "category", "value": "BASKETBALL" }]
+            }
+          }
+        },
+        {
+          "name": "TC-ACT-07c Filtrar sin resultados → totalElements 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('Sin resultados para fecha pasada', () => {",
+                  "    pm.expect(pm.response.json().totalElements).to.eql(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities?date=2020-01-01",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"],
+              "query": [{ "key": "date", "value": "2020-01-01" }]
             }
           }
         },

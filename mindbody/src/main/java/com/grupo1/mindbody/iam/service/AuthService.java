@@ -8,6 +8,9 @@ import com.grupo1.mindbody.iam.model.User;
 import com.grupo1.mindbody.iam.repository.RefreshTokenRepository;
 import com.grupo1.mindbody.iam.repository.UserRepository;
 import com.grupo1.mindbody.iam.security.JwtService;
+import com.grupo1.mindbody.institutions.model.Institution;
+import com.grupo1.mindbody.institutions.repository.InstitutionRepository;
+import com.grupo1.mindbody.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,6 +28,7 @@ public class AuthService implements IAuthService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final InstitutionRepository institutionRepository;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
@@ -41,12 +45,19 @@ public class AuthService implements IAuthService {
         if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateEmailException(request.email());
         }
+        Institution institution = null;
+        if (request.institutionId() != null) {
+            institution = institutionRepository.findById(request.institutionId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Institución no encontrada con id: " + request.institutionId()));
+        }
         User user = User.builder()
             .email(request.email())
             .password(passwordEncoder.encode(request.password()))
-            .name(request.name())
+            .firstName(request.firstName())
+            .lastName(request.lastName())
             .phone(request.phone())
-            .institutionId(request.institutionId())
+            .institution(institution)
             .role(request.role())
             .build();
         userRepository.save(user);
@@ -89,8 +100,11 @@ public class AuthService implements IAuthService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserProfileResponse getProfile(User currentUser) {
-        return UserProfileResponse.from(currentUser);
+        User user = userRepository.findById(currentUser.getId())
+            .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        return UserProfileResponse.from(user);
     }
 
     private TokenResponse generateTokens(User user) {

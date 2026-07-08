@@ -35,7 +35,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin_att@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Admin Attendance\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
+              "raw": "{\n  \"email\": \"admin_att@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"Attendance\",\n  \"institutionId\": 1,\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/sign-up",
@@ -121,7 +121,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"student_att@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Estudiante Attendance\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+              "raw": "{\n  \"email\": \"student_att@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"firstName\": \"Estudiante\",\n  \"lastName\": \"Attendance\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/sign-up",

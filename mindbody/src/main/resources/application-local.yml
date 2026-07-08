@@ -14,6 +14,8 @@ spring:
 
 server:
   port: 8080
+  tomcat:
+    basedir: ./tomcat-work
 
 springdoc:
   swagger-ui:
@@ -26,3 +28,6 @@ app:
     secret: ${JWT_SECRET:mindbody-local-secret-key-must-be-at-least-256-bits-long}
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
     refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:7}
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-2.0-flash}

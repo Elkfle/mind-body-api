@@ -1,0 +1,234 @@
+{
+  "info": {
+    "name": "Mind&Body API — Institutions BC",
+    "description": "Colección de pruebas para el Bounded Context Institutions. Ejecutar ANTES de IAM y Activities para crear la institución de referencia.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "mb-institutions-bc-grupo1-2026"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "institution_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Institutions — Gestión de universidades",
+      "description": "CRUD de instituciones. Crear primero para obtener institution_id usado por IAM y Activities.",
+      "item": [
+        {
+          "name": "TC-INS-00 Sign-up admin temporal → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('admin_access_token', pm.response.json().accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"setup_admin@upc.edu.pe\",\n  \"password\": \"setup12345\",\n  \"firstName\": \"Setup\",\n  \"lastName\": \"Admin\",\n  \"role\": \"UNIVERSITY_ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sign-up"]
+            },
+            "description": "Registra admin sin institution (institutionId omitido) para poder crear la institución."
+          }
+        },
+        {
+          "name": "TC-INS-01 Crear institución → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Respuesta tiene id y name', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('id');",
+                  "    pm.expect(body).to.have.property('name');",
+                  "    pm.expect(body.name).to.eql('Universidad Peruana de Ciencias Aplicadas');",
+                  "    pm.collectionVariables.set('institution_id', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Universidad Peruana de Ciencias Aplicadas\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/institutions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "institutions"]
+            },
+            "description": "Crea la UPC. Captura institution_id para usarlo en IAM y Activities."
+          }
+        },
+        {
+          "name": "TC-INS-02 Nombre duplicado → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Mensaje indica nombre duplicado', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Ya existe');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Universidad Peruana de Ciencias Aplicadas\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/institutions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "institutions"]
+            },
+            "description": "Mismo nombre que TC-INS-01 → 400."
+          }
+        },
+        {
+          "name": "TC-INS-03 Listar instituciones → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Lista contiene al menos 1 institución', () => {",
+                  "    pm.expect(pm.response.json()).to.be.an('array').with.lengthOf.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/institutions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "institutions"]
+            },
+            "description": "Retorna la lista de todas las instituciones."
+          }
+        },
+        {
+          "name": "TC-INS-04 Obtener por ID → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('ID y name correctos', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.id).to.eql(pm.collectionVariables.get('institution_id'));",
+                  "    pm.expect(body).to.have.property('name');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/institutions/{{institution_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "institutions", "{{institution_id}}"]
+            },
+            "description": "Obtiene la institución creada en TC-INS-01."
+          }
+        },
+        {
+          "name": "TC-INS-05 ID inexistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404 Not Found', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/institutions/99999",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "institutions", "99999"]
+            },
+            "description": "ID que no existe → 404 Not Found."
+          }
+        }
+      ]
+    }
+  ]
+}

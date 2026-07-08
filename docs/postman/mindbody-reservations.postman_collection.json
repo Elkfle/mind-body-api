@@ -36,7 +36,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"reservas_test@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"name\": \"Ricardo Test\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
+              "raw": "{\n  \"email\": \"reservas_test@upc.edu.pe\",\n  \"password\": \"password123\",\n  \"firstName\": \"Ricardo\",\n  \"lastName\": \"Test\",\n  \"institutionId\": 1,\n  \"role\": \"STUDENT\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/auth/sign-up",

@@ -23,6 +23,8 @@
 - [13. Bounded Context: IAM](#13-bounded-context-iam)
 - [14. Bounded Context: Reservations](#14-bounded-context-reservations)
 - [15. Bounded Context: Attendance](#15-bounded-context-attendance)
+- [16. Bounded Context: Institutions](#16-bounded-context-institutions)
+- [17. Bounded Context: Chatbot](#17-bounded-context-chatbot)
 
 ---
 
@@ -75,6 +77,7 @@ mind-body-api/
             │   ├── activities/           ← Bounded Context: Activities (Colfer)
             │   ├── reservations/         ← Bounded Context: Reservations (Tejada)
             │   ├── attendance/           ← Bounded Context: Attendance (Ruiz)
+            │   ├── institutions/         ← Bounded Context: Institutions (transversal)
             │   └── shared/              ← Componentes transversales
             └── resources/
                 ├── application.yml           ← Config base (selecciona perfil activo)
@@ -436,11 +439,16 @@ Cada integrante debe agregar su colección en `docs/postman/` con el nombre `min
 
 ```
 docs/postman/
-├── mindbody-activities.postman_collection.json   ← Colfer ✅
+├── mindbody-institutions.postman_collection.json ← Transversal ✅ (ejecutar primero)
 ├── mindbody-iam.postman_collection.json          ← Bussalleu ✅
+├── mindbody-activities.postman_collection.json   ← Colfer ✅ (US06, US07, US15-17)
 ├── mindbody-reservations.postman_collection.json ← Tejada ✅
-└── mindbody-attendance.postman_collection.json   ← Ruiz ✅
+├── mindbody-attendance.postman_collection.json   ← Ruiz ✅
+└── mindbody-chatbot.postman_collection.json      ← Ruiz ✅ (US12, US13, US14)
 ```
+
+> ⚠️ **Orden de ejecución**: ejecutar `mindbody-institutions` primero. Crea la institución con `id=1` que usan todos los demás BCs en sus sign-up y al crear actividades.
+> ⚠️ **Chatbot**: requiere `GEMINI_API_KEY` configurada como variable de entorno. Sin ella, los TC-CHAT-01/02/03/04 devuelven 503. TC-CHAT-05 (validación) funciona sin API key.
 
 ---
 
@@ -481,6 +489,120 @@ docs/postman/
 | 14/05/2026 | Creado `ReservationQrResult.java` — `IReservationService.findByQrCode()` retorna `Optional<ReservationQrResult>` en lugar de `Optional<Reservation>` | La entidad `Reservation` cruzaba el boundary hacia el BC Attendance; el DTO encapsula solo los campos necesarios |
 | 14/05/2026 | Corregido TC-IAM-11 en colección Postman IAM: expected status `400` → `401` | Refleja el comportamiento correcto tras el fix de `InvalidTokenException` |
 | 14/05/2026 | Corregido TC-ACT-06 en colección Postman Activities: body `{}` → body con campos inválidos | Un body `{}` causaba `HttpMessageNotReadableException` (sin `details`) en lugar de `MethodArgumentNotValidException` (con `details[]`) por el constructor canónico del record |
+| 15/06/2026 | **Corrección profesor #1:** Creado Bounded Context `institutions/` completo (Institution, InstitutionRepository, InstitutionRequest/Response, InstitutionMapper, InstitutionService, IInstitutionService, InstitutionController, InstitutionNotFoundException) | `institution_id` existía como `Long` suelto en User y Activity sin entidad asociada ni FK real en la BD; el profesor exigió una entidad Institution con su propio BC |
+| 15/06/2026 | **Corrección profesor #1 (cont.):** `User.institutionId: Long` → `User.institution: @ManyToOne(LAZY) Institution` con `@JoinColumn(name="institution_id")` | Relacionar User con Institution mediante FK real |
+| 15/06/2026 | **Corrección profesor #1 (cont.):** `Activity.institutionId: Long` → `Activity.institution: @ManyToOne(LAZY, optional=false) Institution` con `@JoinColumn(name="institution_id", nullable=false)` | Idem para Activity — la FK es obligatoria (toda actividad pertenece a una institución) |
+| 15/06/2026 | **Corrección profesor #1 (cont.):** Actualizado `ActivityMapper`: agregados `@Mapping(target="institutionId", source="institution.id")` y `@Mapping(target="institutionName", source="institution.name")` | MapStruct no podía inferir la ruta `institution.id` → `institutionId` automáticamente tras el cambio de campo |
+| 15/06/2026 | **Corrección profesor #1 (cont.):** Actualizado `ActivityResponse`: agregado campo `String institutionName` | Permite al cliente saber el nombre de la institución sin un GET adicional |
+| 15/06/2026 | **Corrección profesor #1 (cont.):** Actualizado `ActivityService.create()`: carga `Institution` desde `InstitutionRepository` antes de construir la `Activity` | Ya no se guarda solo el Long, sino la entidad completa con FK |
+| 15/06/2026 | **Corrección profesor #1 (cont.):** Actualizado `AuthService.signUp()`: carga `Institution` desde `InstitutionRepository` si se recibe `institutionId` (campo opcional en sign-up) | Mismo patrón que ActivityService; si no se provee institutionId el campo queda null (admin bootstrap) |
+| 15/06/2026 | **Corrección profesor #2:** `User.name: String` → `User.firstName: String` + `User.lastName: String` con columnas `first_name` y `last_name` | El profesor indicó que un campo `name` único causa redundancia con futuras entidades de perfil; debe separarse en firstName/lastName |
+| 15/06/2026 | **Corrección profesor #2 (cont.):** Actualizado `SignUpRequest`: `String name` → `@NotBlank String firstName` + `@NotBlank String lastName` | DTO de entrada adaptado a los nuevos campos |
+| 15/06/2026 | **Corrección profesor #2 (cont.):** Actualizado `UserProfileResponse`: `String name` → `String firstName` + `String lastName` + `String institutionName`; método factory `from(User)` actualizado | Respuesta de `/me` ahora refleja nombres separados e incluye el nombre de la institución en lugar del ID |
+| 15/06/2026 | Creada colección Postman `docs/postman/mindbody-institutions.postman_collection.json` | 6 casos de prueba: TC-INS-00 sign-up admin sin institución (bootstrap), TC-INS-01 crear institución, TC-INS-02 nombre duplicado→400, TC-INS-03 listar, TC-INS-04 obtener por ID, TC-INS-05 ID inexistente→404 |
+| 15/06/2026 | Actualizadas colecciones Postman: `mindbody-iam`, `mindbody-activities`, `mindbody-reservations`, `mindbody-attendance` | Todos los bodies de sign-up reemplazaron `"name": "..."` por `"firstName": "..."` + `"lastName": "..."` para alinearse con el nuevo campo en `SignUpRequest` |
+| 16/06/2026 | Corregido `TokenResponse.java`: campo `String name` → `String firstName` + `String lastName`; factory `of()` usa `user.getFirstName()` y `user.getLastName()` | `TokenResponse` aún llamaba `user.getName()` que ya no existe tras la corrección del profesor — error de compilación detectado al correr la app |
+| 16/06/2026 | Corregido `GET /auth/me` → 500: `AuthService.getProfile()` — agregado `@Transactional(readOnly=true)` y recarga el usuario con `userRepository.findById()` | `getProfile()` recibía el `User` del filtro JWT (sesión Hibernate cerrada); al acceder a `user.getInstitution().getName()` lanzaba `LazyInitializationException` → 500. La transacción activa permite que Hibernate resuelva la relación LAZY dentro de la misma sesión |
+| 16/06/2026 | Corregidos TC-ACT-01 y TC-ACT-04 en colección Postman Activities: `"date": "2026-06-15"` → `"2026-12-01"`; TC-ACT-07: `"2026-06-20"` → `"2026-12-05"` | Las fechas eran pasadas al momento de correr los tests (hoy 16/06/2026), `@Future` las rechazaba con 400; TC-ACT-01 nunca insertaba Yoga → `activity_id` quedaba vacío → TC-ACT-09/10 iban a `/api/v1/activities/` (sin ID) → 500 |
+| 16/06/2026 | Actualizado `GlobalExceptionHandler`: agregado handler para `NoResourceFoundException` → 404 | Spring lanza `NoResourceFoundException` cuando la URL tiene un segmento de path vacío (ej. `/api/v1/activities/` sin ID) y no coincide con ningún endpoint ni recurso estático; el catch-all `Exception.class` lo devolvía como 500 |
+| 16/06/2026 | **US07:** Filtrado de actividades por categoría, fecha y ubicación — `ActivityRepository.findByFilters()` con `@Query` JPQL y parámetros opcionales; `IActivityService` + `ActivityService` + `ActivityController` actualizados; `GET /api/v1/activities?category=YOGA&date=2026-12-01&location=Gimnasio` | US07 — el AC exige filtros opcionales combinables |
+| 16/06/2026 | **US12-13-14 (Chatbot BC):** nuevo BC completo — modelos (Conversation, Message, UserPreference + enums Intent/Sender/FitnessLevel), DTOs, 3 repositorios, UserPreferenceMapper, UserPreferenceService, ChatbotService (integración Gemini via RestClient), GeminiClient, ChatbotController, PreferenceController, ChatbotUnavailableException → 503 | US12 (acceso chatbot), US13 (consulta por rango horario), US14 (reservar desde chatbot); integración con Gemini `gemini-2.0-flash` configurada via `GEMINI_API_KEY` env var; chatbot responde JSON estructurado con `reply`, `intent` y `activityId` para que el servicio actúe según la intención detectada |
+| 16/06/2026 | Creadas colecciones Postman `mindbody-chatbot.postman_collection.json` y actualizados casos de filtrado en `mindbody-activities.postman_collection.json` | TC-CHAT-01 a TC-CHAT-05 (saludo, rango horario, reserva, fuera-de-scope, mensaje vacío); TC-ACT-07b/07c para filtros por categoría y fecha |
+| 16/06/2026 | **Fix:** `ActivityRepository.findByFilters()` reescrito con boolean flags (`filterCategory`, `filterDate`, `filterLocation`) en lugar del patrón `:param IS NULL OR ...` | Hibernate 7 (Spring Boot 4.x) no puede inferir el tipo JDBC de parámetros tipados nulos (enum, LocalDate) en expresiones `IS NULL` — lanzaba `QueryException` → 500. Los flags booleanos evitan pasar null para parámetros tipados; TC-ACT-07b y TC-ACT-07c pasan |
+| 16/06/2026 | **Fix:** `GeminiClient` migrado de API v1beta a v1; `systemInstruction` eliminado (no soportado en v1); system prompt inyectado como primer turno `user/model` del historial; modelo por defecto actualizado a `gemini-2.0-flash` | v1beta no tenía disponible `gemini-1.5-flash`; v1 no soporta los campos `systemInstruction` ni `responseMimeType`; el patrón de turno inicial es compatible con cualquier versión de la API |
+
+---
+
+## 17. Bounded Context: Chatbot
+
+**US:** US12 (acceso chatbot), US13 (consulta por rango horario), US14 (reserva desde chatbot)
+
+### 17.1 Archivos implementados
+
+```
+src/main/java/com/grupo1/mindbody/chatbot/
+├── controller/
+│   ├── ChatbotController.java       ← POST /api/v1/chatbot/query
+│   └── PreferenceController.java    ← POST /api/v1/preferences, GET /api/v1/preferences/me
+├── service/
+│   ├── IChatbotService.java
+│   ├── ChatbotService.java          ← orquesta conversación + LLM + reserva automática
+│   ├── IUserPreferenceService.java
+│   ├── UserPreferenceService.java
+│   └── GeminiClient.java            ← RestClient → Gemini API v1 /models/{model}:generateContent
+├── repository/
+│   ├── ConversationRepository.java
+│   ├── MessageRepository.java
+│   └── UserPreferenceRepository.java
+├── model/
+│   ├── Conversation.java            ← @Entity conversations
+│   ├── Message.java                 ← @Entity messages
+│   ├── UserPreference.java          ← @Entity user_preferences
+│   ├── Intent.java (enum)           ← SEARCH_ACTIVITY, MAKE_RESERVATION, CHECK_MY_SCHEDULE, CANCEL_RESERVATION, UNKNOWN
+│   ├── Sender.java (enum)           ← USER, BOT
+│   └── FitnessLevel.java (enum)     ← BEGINNER, INTERMEDIATE, ADVANCED
+├── dto/
+│   ├── ChatQueryRequest.java        ← { message: String }
+│   ├── ChatQueryResponse.java       ← { conversationId, reply, intent, suggestions[] }
+│   ├── UserPreferenceRequest.java
+│   └── UserPreferenceResponse.java
+├── mapper/
+│   └── UserPreferenceMapper.java    ← MapStruct (FitnessLevel enum → String en response)
+└── exception/
+    └── ChatbotUnavailableException.java  ← 503 cuando GEMINI_API_KEY no está configurada o falla la API
+```
+
+### 17.2 Endpoints
+
+| Método | Endpoint | Descripción | Auth |
+|---|---|---|---|
+| POST | `/api/v1/chatbot/query` | Enviar mensaje al chatbot | Sí |
+| POST | `/api/v1/preferences` | Guardar/actualizar preferencias deportivas | Sí |
+| GET | `/api/v1/preferences/me` | Consultar preferencias propias | Sí |
+
+### 17.3 Flujo de query
+
+1. Encuentra o crea conversación `ACTIVE` para el usuario
+2. Persiste el mensaje del usuario en `messages`
+3. Carga preferencias del usuario + actividades disponibles → construye system prompt
+4. Carga historial de la conversación (últimos 10 mensajes)
+5. Llama a Gemini `gemini-2.0-flash` con el historial (system prompt inyectado como primer turno)
+6. El LLM devuelve JSON `{"reply":"...","intent":"...","activityId":null|N}`
+7. Si `intent=MAKE_RESERVATION` y `activityId` es no nulo → llama a `IReservationService.create()`
+8. Persiste la respuesta del bot y devuelve `ChatQueryResponse`
+
+### 17.4 Configuración
+
+En `application-local.yml` (y `application-prod.yml`):
+```yaml
+app:
+  gemini:
+    api-key: ${GEMINI_API_KEY:}        # Required: clave de API de Gemini
+    model: ${GEMINI_MODEL:gemini-2.0-flash}
+```
+
+Variables de entorno necesarias:
+- `GEMINI_API_KEY` — clave de API de Gemini (https://aistudio.google.com → Get API Key)
+- `GEMINI_MODEL` — modelo a usar (por defecto `gemini-2.0-flash`)
+
+Sin `GEMINI_API_KEY`, el chatbot devuelve 503. La validación de entrada (mensaje vacío → 400) funciona sin la clave.
+
+> ⚠️ El quota de Gemini es **por proyecto**, no por API key. Si el quota se agota, crear una nueva key dentro del mismo proyecto no ayuda — hay que crear un proyecto nuevo en Google AI Studio.
+
+### 17.5 Casos de prueba Postman
+
+| ID | Descripción | US |
+|---|---|---|
+| TC-CHAT-00a | Sign-up estudiante (setup) | — |
+| TC-CHAT-00b | Sign-in, captura token | — |
+| TC-PREF-01 | Guardar preferencias | — |
+| TC-PREF-02 | Obtener mis preferencias | — |
+| TC-PREF-03 | Sin token → 401 | — |
+| TC-CHAT-01 | Saludo inicial → 200, conversationId + reply | US12 |
+| TC-CHAT-02 | Consulta por rango horario → intent SEARCH_ACTIVITY | US13 |
+| TC-CHAT-03 | Reservar actividad → intent MAKE_RESERVATION | US14 |
+| TC-CHAT-04 | Pregunta fuera de scope → intent UNKNOWN | US12 |
+| TC-CHAT-05 | Mensaje vacío → 400 con details[] | US12 |
 
 ---
 
@@ -620,3 +742,79 @@ src/main/java/com/grupo1/mindbody/attendance/
 | TC-ATT-04 | GET `/attendance/activity/{id}` | 200, array con registros |
 | TC-ATT-05 | GET `/attendance/my` | 200, historial del estudiante |
 | TC-ATT-06 | GET `/attendance/activity/{id}/summary` | 200, totalAttended=1, attendanceRate>0 |
+
+---
+
+## 16. Bounded Context: Institutions
+
+**Responsable:** Transversal (todos los BCs dependen de este)  
+**Corrección:** Exigida por el profesor — `institution_id` existía suelto como `Long` en User y Activity
+
+### 16.1 Archivos implementados
+
+```
+src/main/java/com/grupo1/mindbody/institutions/
+├── controller/
+│   └── InstitutionController.java     ← POST /institutions, GET /institutions, GET /institutions/{id}
+├── service/
+│   ├── IInstitutionService.java       ← Interfaz: create, findAll, findById
+│   └── InstitutionService.java        ← Implementación con validación de nombre duplicado
+├── repository/
+│   └── InstitutionRepository.java     ← Spring Data JPA + existsByName()
+├── model/
+│   └── Institution.java               ← Entidad JPA (tabla: institutions)
+├── dto/
+│   ├── InstitutionRequest.java        ← Record: @NotBlank String name
+│   └── InstitutionResponse.java       ← Record: Long id, String name, LocalDateTime createdAt
+├── mapper/
+│   └── InstitutionMapper.java         ← MapStruct: InstitutionRequest → Institution, Institution → InstitutionResponse
+└── exception/
+    └── InstitutionNotFoundException.java ← Extiende ResourceNotFoundException → 404
+```
+
+### 16.2 Modelo de datos
+
+```
+institutions
+├── id          BIGSERIAL PRIMARY KEY
+├── name        VARCHAR NOT NULL UNIQUE
+└── created_at  TIMESTAMP NOT NULL
+```
+
+FK desde otras tablas:
+- `users.institution_id → institutions.id` (nullable — admins bootstrap sin institución)
+- `activities.institution_id → institutions.id` (NOT NULL — toda actividad pertenece a una institución)
+
+### 16.3 Endpoints
+
+| Método | URL | Auth | Descripción |
+|--------|-----|------|-------------|
+| POST | `/api/v1/institutions` | Bearer | Crear institución (nombre único) |
+| GET | `/api/v1/institutions` | Bearer | Listar todas las instituciones |
+| GET | `/api/v1/institutions/{id}` | Bearer | Obtener institución por ID |
+
+### 16.4 Reglas de negocio
+
+- El nombre de la institución debe ser único: duplicado → `BusinessRuleException` → 400
+- `createdAt` se asigna en `@PrePersist` — no es modificable (`updatable = false`)
+- `institutionId` en `SignUpRequest` es **opcional** para permitir registrar el primer admin sin institución (flujo bootstrap)
+- `institutionId` en `ActivityRequest` es **obligatorio** (`@NotNull`)
+
+### 16.5 Flujo de arranque (bootstrap)
+
+Antes de registrar usuarios con institución o crear actividades, se debe:
+
+1. Ejecutar `TC-INS-00`: registrar un admin temporal **sin** `institutionId`
+2. Ejecutar `TC-INS-01`: crear la institución → captura `institution_id`
+3. A partir de aquí todos los demás sign-up y creaciones de actividad pueden usar `institutionId: 1`
+
+### 16.6 Casos de prueba (Postman)
+
+| ID | Endpoint | Resultado esperado |
+|----|----------|-------------------|
+| TC-INS-00 | POST `/auth/sign-up` (sin institutionId) | 201 — bootstrap para obtener token |
+| TC-INS-01 | POST `/institutions` | 201 — captura institution_id |
+| TC-INS-02 | POST `/institutions` (nombre duplicado) | 400, mensaje "Ya existe" |
+| TC-INS-03 | GET `/institutions` | 200, array con al menos 1 elemento |
+| TC-INS-04 | GET `/institutions/{id}` | 200, id y name correctos |
+| TC-INS-05 | GET `/institutions/99999` | 404 |

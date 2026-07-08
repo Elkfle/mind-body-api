@@ -5,17 +5,23 @@ import com.grupo1.mindbody.iam.model.User;
 public record UserProfileResponse(
     Long id,
     String email,
-    String name,
+    String firstName,
+    String lastName,
     String phone,
-    Long institutionId,
+    String institutionName,
     String role,
     boolean active
 ) {
     public static UserProfileResponse from(User user) {
         return new UserProfileResponse(
-            user.getId(), user.getEmail(), user.getName(),
-            user.getPhone(), user.getInstitutionId(),
-            user.getRole().name(), user.isActive()
+            user.getId(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getPhone(),
+            user.getInstitution() != null ? user.getInstitution().getName() : null,
+            user.getRole().name(),
+            user.isActive()
         );
     }
 }

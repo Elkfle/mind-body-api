@@ -1,5 +1,6 @@
 package com.grupo1.mindbody.iam.model;
 
+import com.grupo1.mindbody.institutions.model.Institution;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -28,13 +29,17 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
-    private String name;
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
 
     private String phone;
 
-    @Column(name = "institution_id")
-    private Long institutionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "institution_id")
+    private Institution institution;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

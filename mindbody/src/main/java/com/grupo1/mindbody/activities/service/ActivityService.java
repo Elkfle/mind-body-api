@@ -6,8 +6,12 @@ import com.grupo1.mindbody.activities.dto.ActivitySummaryReport;
 import com.grupo1.mindbody.activities.exception.ActivityNotFoundException;
 import com.grupo1.mindbody.activities.mapper.ActivityMapper;
 import com.grupo1.mindbody.activities.model.Activity;
+import com.grupo1.mindbody.activities.model.ActivityCategory;
 import com.grupo1.mindbody.activities.model.ActivityStatus;
 import com.grupo1.mindbody.activities.repository.ActivityRepository;
+import com.grupo1.mindbody.institutions.exception.InstitutionNotFoundException;
+import com.grupo1.mindbody.institutions.model.Institution;
+import com.grupo1.mindbody.institutions.repository.InstitutionRepository;
 import com.grupo1.mindbody.shared.exception.BusinessRuleException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -22,11 +27,14 @@ import java.util.List;
 public class ActivityService implements IActivityService {
 
     private final ActivityRepository activityRepository;
+    private final InstitutionRepository institutionRepository;
     private final ActivityMapper activityMapper;
 
     @Override
     @Transactional
     public ActivityResponse create(ActivityRequest request, Long adminId) {
+        Institution institution = institutionRepository.findById(request.institutionId())
+            .orElseThrow(() -> new InstitutionNotFoundException(request.institutionId()));
         Activity activity = Activity.builder()
             .title(request.title())
             .description(request.description())
@@ -38,7 +46,7 @@ public class ActivityService implements IActivityService {
             .date(request.date())
             .startTime(request.startTime())
             .endTime(request.endTime())
-            .institutionId(request.institutionId())
+            .institution(institution)
             .createdByAdminId(adminId)
             .build();
         return activityMapper.toResponse(activityRepository.save(activity));
@@ -49,6 +57,17 @@ public class ActivityService implements IActivityService {
     public Page<ActivityResponse> findAll(Pageable pageable) {
         return activityRepository.findAll(pageable)
             .map(activityMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ActivityResponse> findByFilters(ActivityCategory category, LocalDate date, String location, Pageable pageable) {
+        return activityRepository.findByFilters(
+            category != null, category != null ? category : ActivityCategory.YOGA,
+            date != null, date != null ? date : LocalDate.of(2000, 1, 1),
+            location != null && !location.isBlank(), location != null ? location : "",
+            pageable
+        ).map(activityMapper::toResponse);
     }
 
     @Override

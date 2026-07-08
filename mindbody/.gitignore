@@ -35,3 +35,6 @@ build/
 ### Variables de entorno (nunca subir al repo) ###
 .env
 .env.local
+
+### Directorio de trabajo de Tomcat (generado en local) ###
+tomcat-work/
