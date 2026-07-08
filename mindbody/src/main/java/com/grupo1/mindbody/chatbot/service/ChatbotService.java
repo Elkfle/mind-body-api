@@ -1,39 +1,45 @@
 package com.grupo1.mindbody.chatbot.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.grupo1.mindbody.activities.dto.ActivityResponse;
-import com.grupo1.mindbody.activities.service.IActivityService;
 import com.grupo1.mindbody.chatbot.dto.ChatQueryRequest;
 import com.grupo1.mindbody.chatbot.dto.ChatQueryResponse;
-import com.grupo1.mindbody.chatbot.model.*;
+import com.grupo1.mindbody.chatbot.exception.ChatbotUnavailableException;
+import com.grupo1.mindbody.chatbot.model.Conversation;
+import com.grupo1.mindbody.chatbot.model.Intent;
+import com.grupo1.mindbody.chatbot.model.Message;
+import com.grupo1.mindbody.chatbot.model.Sender;
 import com.grupo1.mindbody.chatbot.repository.ConversationRepository;
 import com.grupo1.mindbody.chatbot.repository.MessageRepository;
 import com.grupo1.mindbody.iam.model.User;
 import com.grupo1.mindbody.iam.repository.UserRepository;
-import com.grupo1.mindbody.reservations.service.IReservationService;
 import com.grupo1.mindbody.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * Chatbot conversacional con Spring AI (US12-14). El modelo usa Tool Calling
+ * ({@link ChatbotTools}) para buscar y reservar actividades reales; la
+ * conversación se persiste (Conversation/Message) para dar contexto de historial.
+ */
 @Service
 @RequiredArgsConstructor
 public class ChatbotService implements IChatbotService {
 
+    private static final int HISTORY_LIMIT = 10;
+
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
-    private final IActivityService activityService;
-    private final IReservationService reservationService;
     private final IUserPreferenceService preferenceService;
-    private final GeminiClient geminiClient;
-    private final ObjectMapper objectMapper;
+    private final ChatClient chatClient;
+    private final ChatbotTools chatbotTools;
 
     @Override
     @Transactional
@@ -51,100 +57,64 @@ public class ChatbotService implements IChatbotService {
                     .build()
             ));
 
-        Message userMessage = Message.builder()
-            .conversation(conversation)
-            .content(request.message())
-            .sender(Sender.USER)
-            .sentAt(LocalDateTime.now())
-            .build();
-        messageRepository.save(userMessage);
+        // Historial previo (sin el mensaje actual) como contexto conversacional.
+        List<org.springframework.ai.chat.messages.Message> history = recentHistory(conversation.getId());
 
-        String systemPrompt = buildSystemPrompt(userId);
-        List<Message> history = messageRepository
-            .findByConversationIdOrderBySentAtAsc(conversation.getId());
-        if (history.size() > 10) {
-            history = history.subList(history.size() - 10, history.size());
+        String reply;
+        try {
+            reply = chatClient.prompt()
+                .system(buildSystemPrompt(userId))
+                .messages(history)
+                .user(request.message())
+                .toolContext(Map.of("userId", userId))
+                .tools(chatbotTools)
+                .call()
+                .content();
+        } catch (ChatbotUnavailableException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ChatbotUnavailableException("Error al conectar con el servicio de IA: " + e.getMessage());
+        }
+        if (reply == null || reply.isBlank()) {
+            reply = "Lo siento, no pude procesar tu solicitud en este momento.";
         }
 
-        String rawResponse = geminiClient.chat(systemPrompt, history);
-        AiResponse aiResponse = parseAiResponse(rawResponse);
+        messageRepository.save(Message.builder()
+            .conversation(conversation).content(request.message())
+            .sender(Sender.USER).sentAt(LocalDateTime.now()).build());
+        messageRepository.save(Message.builder()
+            .conversation(conversation).content(reply)
+            .sender(Sender.BOT).intent(Intent.UNKNOWN).sentAt(LocalDateTime.now()).build());
 
-        List<ActivityResponse> suggestions = new ArrayList<>();
-        if (aiResponse.intent() == Intent.MAKE_RESERVATION && aiResponse.activityId() != null) {
-            try {
-                reservationService.create(aiResponse.activityId(), userId);
-            } catch (Exception ignored) {
-                // El mensaje de error ya va en el reply del LLM
-            }
-        } else if (aiResponse.intent() == Intent.SEARCH_ACTIVITY) {
-            suggestions = activityService.findAll(PageRequest.of(0, 5)).getContent();
-        }
+        return new ChatQueryResponse(conversation.getId(), reply, "ASSISTANT", List.of());
+    }
 
-        Message botMessage = Message.builder()
-            .conversation(conversation)
-            .content(aiResponse.reply())
-            .sender(Sender.BOT)
-            .intent(aiResponse.intent())
-            .sentAt(LocalDateTime.now())
-            .build();
-        messageRepository.save(botMessage);
-
-        return new ChatQueryResponse(
-            conversation.getId(),
-            aiResponse.reply(),
-            aiResponse.intent().name(),
-            suggestions
-        );
+    private List<org.springframework.ai.chat.messages.Message> recentHistory(Long conversationId) {
+        List<Message> stored = messageRepository.findByConversationIdOrderBySentAtAsc(conversationId);
+        int from = Math.max(0, stored.size() - HISTORY_LIMIT);
+        return stored.subList(from, stored.size()).stream()
+            .map(m -> m.getSender() == Sender.USER
+                ? (org.springframework.ai.chat.messages.Message) new UserMessage(m.getContent())
+                : new AssistantMessage(m.getContent()))
+            .toList();
     }
 
     private String buildSystemPrompt(Long userId) {
         StringBuilder sb = new StringBuilder("""
-            Eres un asistente de Mind&Body, plataforma de actividades deportivas universitarias en Perú.
-            Tu objetivo es ayudar a los estudiantes a encontrar y reservar actividades deportivas.
+            Eres el asistente virtual de Mind&Body, una plataforma de actividades deportivas
+            universitarias en Perú. Ayudas a los estudiantes a encontrar y reservar actividades.
 
-            RESTRICCIÓN IMPORTANTE: Solo puedes responder preguntas relacionadas con actividades deportivas.
-            Si el usuario pregunta algo fuera de este scope, responde que solo puedes ayudar con actividades.
-
-            Responde SIEMPRE con un JSON válido (sin markdown), con este formato exacto:
-            {"reply": "tu respuesta en español", "intent": "SEARCH_ACTIVITY|MAKE_RESERVATION|CHECK_MY_SCHEDULE|CANCEL_RESERVATION|UNKNOWN", "activityId": null_o_número_entero}
-
+            Usa las herramientas disponibles para: buscar actividades (con o sin filtros),
+            buscar por rango de horas libres, reservar, listar las reservas del estudiante y
+            cancelar reservas. Cuando muestres actividades, incluye su ID para poder reservarlas.
+            Antes de reservar o cancelar, confirma con el estudiante. Responde en español,
+            de forma clara y breve. Limítate a temas de actividades deportivas y bienestar;
+            si te preguntan otra cosa, indícalo amablemente.
             """);
-
-        String preferenceContext = preferenceService.buildLlmContext(userId);
-        if (!preferenceContext.isBlank()) {
-            sb.append(preferenceContext).append("\n");
+        String prefs = preferenceService.buildLlmContext(userId);
+        if (prefs != null && !prefs.isBlank()) {
+            sb.append("\n").append(prefs);
         }
-
-        List<ActivityResponse> activities = activityService.findAll(PageRequest.of(0, 20)).getContent();
-        if (!activities.isEmpty()) {
-            sb.append("Actividades disponibles actualmente:\n");
-            for (ActivityResponse a : activities) {
-                sb.append(String.format("- [ID:%d] %s (%s) — %s — %s %s-%s — Cupos: %d/%d\n",
-                    a.id(), a.title(), a.category(), a.venue(),
-                    a.date(), a.startTime(), a.endTime(),
-                    a.currentEnrollment(), a.maxCapacity()));
-            }
-        }
-
         return sb.toString();
     }
-
-    private AiResponse parseAiResponse(String rawResponse) {
-        try {
-            JsonNode node = objectMapper.readTree(rawResponse);
-            String reply = node.path("reply").asText("Lo siento, no pude procesar tu solicitud.");
-            Intent intent;
-            try {
-                intent = Intent.valueOf(node.path("intent").asText("UNKNOWN"));
-            } catch (IllegalArgumentException e) {
-                intent = Intent.UNKNOWN;
-            }
-            Long activityId = node.path("activityId").isNull() ? null : node.path("activityId").asLong();
-            return new AiResponse(reply, intent, activityId);
-        } catch (Exception e) {
-            return new AiResponse(rawResponse, Intent.UNKNOWN, null);
-        }
-    }
-
-    private record AiResponse(String reply, Intent intent, Long activityId) {}
 }
