@@ -2,11 +2,11 @@ package com.grupo1.mindbody.chatbot.service;
 
 import com.grupo1.mindbody.chatbot.dto.NutritionResponse;
 import com.grupo1.mindbody.chatbot.exception.ChatbotUnavailableException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
  * sus preferencias/objetivos para generar una recomendación con Spring AI.
  */
 @Service
-@RequiredArgsConstructor
 public class NutritionService {
 
     private static final int TOP_K = 3;
@@ -26,6 +25,19 @@ public class NutritionService {
     private final ChatClient chatClient;
     private final VectorStore vectorStore;
     private final IUserPreferenceService preferenceService;
+
+    /**
+     * El {@code VectorStore} se inyecta {@code @Lazy}: si su creación real (carga del
+     * modelo ONNX) falla, el fallo ocurre recién en el primer uso real (dentro de
+     * {@link #advise}, que ya lo captura y devuelve 503) y no al arrancar la app.
+     */
+    public NutritionService(ChatClient chatClient,
+                             @Lazy VectorStore vectorStore,
+                             IUserPreferenceService preferenceService) {
+        this.chatClient = chatClient;
+        this.vectorStore = vectorStore;
+        this.preferenceService = preferenceService;
+    }
 
     public NutritionResponse advise(Long userId, String question) {
         List<Document> docs;
