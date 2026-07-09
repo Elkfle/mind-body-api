@@ -50,11 +50,14 @@
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-vector-store</artifactId>
 		</dependency>
-		<!-- Spring AI: embeddings locales (ONNX/transformers) para el RAG, sin depender
-		     de la cuota de Gemini y evitando la incompatibilidad del endpoint OpenAI-compat -->
+		<!-- Spring AI: embeddings vía API nativa de Google GenAI (Gemini). Reemplaza al
+		     embedding local ONNX/transformers: ese modelo se cargaba en memoria dentro del
+		     proceso Java y agotaba el heap en el free tier de Render (512MB). El SDK nativo
+		     de Google también evita la incompatibilidad del campo `index` que tenía el
+		     endpoint OpenAI-compat de Gemini usado para el chat. -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-transformers</artifactId>
+			<artifactId>spring-ai-starter-model-google-genai</artifactId>
 		</dependency>
 
 		<!-- JPA + PostgreSQL -->
