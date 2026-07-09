@@ -21,8 +21,8 @@ import java.util.Map;
  * {@link VectorStore} para el RAG del asistente de dietas (US22).
  *
  * <p>Es resiliente: si falta {@code GEMINI_API_KEY}, se agota la cuota de embeddings, o
- * el modelo local (ONNX) no puede inicializarse en este entorno, registra un aviso y la
- * app arranca igual (el asistente responderá con un 503 controlado en vez de sin RAG).
+ * la API de Google GenAI no responde, registra un aviso y la app arranca igual (el
+ * asistente responderá con un 503 controlado en vez de sin RAG).
  */
 @Component
 public class RagIngestionRunner implements ApplicationRunner {
@@ -32,8 +32,9 @@ public class RagIngestionRunner implements ApplicationRunner {
     private final VectorStore vectorStore;
 
     /** {@code @Lazy}: por la misma razón que en {@link NutritionService} — el fallo de
-     * inicialización del modelo ONNX debe ocurrir aquí dentro de {@code run()} (ya
-     * capturado), no al construir este bean durante el arranque de la aplicación. */
+     * inicialización (llamada a la API de embeddings) debe ocurrir aquí dentro de
+     * {@code run()} (ya capturado), no al construir este bean durante el arranque de la
+     * aplicación. */
     public RagIngestionRunner(@Lazy VectorStore vectorStore) {
         this.vectorStore = vectorStore;
     }

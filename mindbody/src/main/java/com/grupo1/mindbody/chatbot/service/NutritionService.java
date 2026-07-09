@@ -27,9 +27,10 @@ public class NutritionService {
     private final IUserPreferenceService preferenceService;
 
     /**
-     * El {@code VectorStore} se inyecta {@code @Lazy}: si su creación real (carga del
-     * modelo ONNX) falla, el fallo ocurre recién en el primer uso real (dentro de
-     * {@link #advise}, que ya lo captura y devuelve 503) y no al arrancar la app.
+     * El {@code VectorStore} se inyecta {@code @Lazy}: si su creación real (llamada a la
+     * API de embeddings de Google GenAI) falla, el fallo ocurre recién en el primer uso
+     * real (dentro de {@link #advise}, que ya lo captura y devuelve 503) y no al arrancar
+     * la app.
      */
     public NutritionService(ChatClient chatClient,
                              @Lazy VectorStore vectorStore,
