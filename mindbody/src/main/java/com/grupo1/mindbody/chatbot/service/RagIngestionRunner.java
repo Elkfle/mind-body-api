@@ -1,12 +1,12 @@
 package com.grupo1.mindbody.chatbot.service;
 
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
@@ -20,16 +20,23 @@ import java.util.Map;
  * Al arrancar la app, indexa el corpus de nutrición (resources/rag/*.md) en el
  * {@link VectorStore} para el RAG del asistente de dietas (US22).
  *
- * <p>Es resiliente: si falta {@code GEMINI_API_KEY} o se agota la cuota de embeddings,
- * registra un aviso y la app arranca igual (el asistente responderá sin contexto RAG).
+ * <p>Es resiliente: si falta {@code GEMINI_API_KEY}, se agota la cuota de embeddings, o
+ * el modelo local (ONNX) no puede inicializarse en este entorno, registra un aviso y la
+ * app arranca igual (el asistente responderá con un 503 controlado en vez de sin RAG).
  */
 @Component
-@RequiredArgsConstructor
 public class RagIngestionRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(RagIngestionRunner.class);
 
     private final VectorStore vectorStore;
+
+    /** {@code @Lazy}: por la misma razón que en {@link NutritionService} — el fallo de
+     * inicialización del modelo ONNX debe ocurrir aquí dentro de {@code run()} (ya
+     * capturado), no al construir este bean durante el arranque de la aplicación. */
+    public RagIngestionRunner(@Lazy VectorStore vectorStore) {
+        this.vectorStore = vectorStore;
+    }
 
     @Override
     public void run(ApplicationArguments args) {
