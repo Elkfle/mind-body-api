@@ -7,14 +7,6 @@ spring:
   application:
     name: mindbody
   ai:
-    # Selecciona qué starter maneja cada tipo de modelo cuando hay varios en el classpath.
-    # Chat sigue en el endpoint OpenAI-compat de Gemini (funciona bien). Embeddings pasa al
-    # SDK nativo de Google GenAI: el compat OpenAI de Gemini no devolvía el campo `index`
-    # que Spring AI exige en la respuesta de embeddings.
-    model:
-      chat: openai
-      embedding:
-        text: google-genai
     openai:
       # Spring AI habla con Gemini a través de su endpoint compatible con OpenAI.
       # Reutiliza la key gratuita de Google AI Studio (variable GEMINI_API_KEY).
@@ -26,14 +18,7 @@ spring:
           # gemini-2.5-flash tiene free tier; 2.0-flash daba cuota 0 en el proyecto de la key
           model: ${AI_CHAT_MODEL:gemini-2.5-flash}
           temperature: 0.4
-    google:
-      genai:
-        # SDK nativo de Google GenAI (Developer API de Google AI Studio, misma key que el
-        # chat). vertex-ai: false evita requerir un proyecto GCP con billing/ADC.
-        api-key: ${GEMINI_API_KEY:not-configured}
-        vertex-ai: false
-        embedding:
-          api-key: ${GEMINI_API_KEY:not-configured}
-          vertex-ai: false
-          text:
-            model: ${AI_EMBEDDING_MODEL:text-embedding-004}
+      embedding:
+        embeddings-path: /embeddings
+        options:
+          model: ${AI_EMBEDDING_MODEL:text-embedding-004}
